@@ -1,0 +1,24 @@
+.loop-area-filter {
+  padding: 16px 0;
+}
+
+.filter-description {
+  margin-bottom: 24px;
+}
+
+.filter-description p {
+  margin: 8px 0;
+  color: var(--semi-color-text-0);
+}
+
+.filter-hint {
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+.filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+

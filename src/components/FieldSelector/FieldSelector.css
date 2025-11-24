@@ -1,0 +1,90 @@
+/* 字段选择器样式 */
+
+.field-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field-selector-search {
+  width: 100%;
+}
+
+.field-selector-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 14px;
+  color: var(--semi-color-text-1);
+  white-space: nowrap;
+}
+
+.field-selector-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.field-selector-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+
+.field-selector-item:hover {
+  background: var(--semi-color-fill-0);
+  border-color: var(--semi-color-border);
+}
+
+.field-selector-item.selected {
+  background: var(--semi-color-primary-light-default);
+  border-color: var(--semi-color-primary);
+}
+
+.field-item-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.field-item-name {
+  font-size: 14px;
+  color: var(--semi-color-text-0);
+  font-weight: 500;
+}
+
+.field-item-check {
+  color: var(--semi-color-primary);
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.field-selector-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+.field-selector-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--semi-color-border);
+}
+
+.footer-text {
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+}
+

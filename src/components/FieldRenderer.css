@@ -1,0 +1,69 @@
+.field-item {
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.field-item:hover {
+  border-color: #b0b0b0;
+}
+
+.field-changed {
+  border-color: #faad14 !important;
+  background: #fffbf0;
+  box-shadow: 0 0 0 2px rgba(250, 173, 20, 0.1);
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.field-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.field-item:hover .field-actions {
+  opacity: 1;
+}
+
+.field-content {
+  min-height: 32px;
+}
+
+.field-display {
+  padding: 6px 8px;
+  border-radius: 4px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.field-editable {
+  cursor: pointer;
+}
+
+.field-editable:hover {
+  background: #f5f5f5;
+}
+
+.field-display .semi-typography {
+  word-break: break-word;
+}
+

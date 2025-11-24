@@ -1,0 +1,117 @@
+.template-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--semi-color-bg-0);
+}
+
+.template-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--semi-color-border);
+  background: var(--semi-color-bg-0);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.template-page-body {
+  flex: 1;
+  overflow: auto; /* 允许横向和纵向滚动 */
+  min-width: 0; /* 允许内容超出时显示滚动条 */
+}
+
+.template-sidebar {
+  background: var(--semi-color-bg-1);
+  border-right: 1px solid var(--semi-color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.template-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.template-list-loading,
+.template-list-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--semi-color-text-2);
+}
+
+.template-item {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.template-item:hover {
+  background: var(--semi-color-fill-0);
+  border-color: var(--semi-color-border);
+}
+
+.template-item.selected {
+  background: var(--semi-color-primary-light-active);
+  border-color: var(--semi-color-primary);
+}
+
+.template-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.template-item-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.template-item:hover .template-item-actions {
+  opacity: 1;
+}
+
+.template-content {
+  padding: 24px;
+  background: var(--semi-color-bg-0);
+  min-width: 900px; /* 固定最小宽度，确保内容不会被压缩 */
+  width: fit-content; /* 根据内容自适应宽度 */
+}
+
+.template-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 400px;
+}
+

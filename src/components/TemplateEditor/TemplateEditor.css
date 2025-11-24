@@ -1,0 +1,323 @@
+/* 模板编辑器样式 */
+
+.template-editor {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.template-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--semi-color-border);
+  background: var(--semi-color-bg-0);
+}
+
+.header-left h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.template-editor-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 组件面板 */
+.component-panel-sider {
+  background: var(--semi-color-bg-1);
+  border-right: 1px solid var(--semi-color-border);
+  overflow-y: auto;
+}
+
+.component-panel {
+  padding: 16px;
+}
+
+.component-panel-header {
+  margin-bottom: 16px;
+}
+
+.component-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.component-item {
+  cursor: move;
+  transition: all 0.2s;
+}
+
+.component-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.component-item-icon {
+  font-size: 24px;
+  color: var(--semi-color-primary);
+  margin-bottom: 8px;
+}
+
+.component-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 编辑画布容器 */
+.editor-canvas-content {
+  position: relative;
+  background: #f5f5f5;
+  display: block;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+  min-width: 850px; /* 确保编辑器有最小宽度 */
+}
+
+/* 画布工具栏 */
+.editor-canvas-wrapper {
+  width: 850px; /* A4 宽度 + 边距 (794 + 56) */
+  min-width: 850px; /* 确保不会被压缩，触发横向滚动 */
+  margin: 0 auto; /* 居中显示 */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-canvas-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--semi-color-bg-0);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.canvas-info {
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+/* 流式画布 */
+.editor-canvas-flow {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 添加模式时的画布样式 */
+.editor-canvas-flow.adding-mode {
+  background: 
+    linear-gradient(90deg, rgba(var(--semi-blue-5), 0.1) 1px, transparent 1px),
+    linear-gradient(rgba(var(--semi-blue-5), 0.1) 1px, transparent 1px),
+    #fff;
+  background-size: 20px 20px;
+}
+
+.canvas-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+/* 流式元素 */
+.canvas-element-flow {
+  transition: all 0.2s;
+  cursor: move;
+  width: 100%;
+}
+
+.canvas-element-flow.dragging {
+  opacity: 0.5;
+}
+
+.canvas-element-flow.drag-over {
+  border-top: 2px solid var(--semi-color-primary);
+  padding-top: 8px;
+}
+
+.canvas-element-flow.selected .element-card-flow {
+  border: 2px solid var(--semi-color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--semi-blue-5), 0.1);
+}
+
+.element-card-flow {
+  border: 1px solid var(--semi-color-border);
+  transition: all 0.2s;
+}
+
+.element-card-flow:hover {
+  border-color: var(--semi-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.element-header-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.element-drag-handle {
+  cursor: grab;
+  color: var(--semi-color-text-2);
+  display: flex;
+  align-items: center;
+}
+
+.element-drag-handle:active {
+  cursor: grabbing;
+}
+
+.element-type {
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+  background: var(--semi-color-fill-0);
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.element-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.element-content-flow {
+  font-size: 14px;
+  color: var(--semi-color-text-0);
+  min-height: 40px;
+}
+
+/* 元素预览样式 */
+.element-preview-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.element-preview-field {
+  color: var(--semi-color-primary);
+  font-weight: 500;
+}
+
+.element-preview-loop {
+  padding: 12px;
+  background: var(--semi-color-fill-0);
+  border-radius: 4px;
+  border-left: 3px solid var(--semi-color-primary);
+}
+
+.element-preview-table {
+  padding: 12px;
+  background: var(--semi-color-fill-0);
+  border-radius: 4px;
+}
+
+.table-preview-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.table-preview-columns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-column-badge {
+  background: var(--semi-color-primary-light-default);
+  color: var(--semi-color-primary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.table-preview-content {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.table-preview-content th,
+.table-preview-content td {
+  border: 1px solid var(--semi-color-border);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.table-preview-content th {
+  background: var(--semi-color-fill-1);
+  font-weight: 600;
+}
+
+.table-preview-content td {
+  background: #fff;
+}
+
+.element-preview-image,
+.element-preview-link {
+  color: var(--semi-color-text-2);
+  font-style: italic;
+}
+
+/* 属性面板 */
+.property-panel-sider {
+  background: var(--semi-color-bg-0);
+  border-left: 1px solid var(--semi-color-border);
+  overflow-y: auto;
+}
+
+.property-panel {
+  padding: 16px;
+}
+
+.property-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.property-panel-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.element-type-badge {
+  font-size: 12px;
+  color: var(--semi-color-primary);
+  background: var(--semi-color-primary-light-active);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.property-panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

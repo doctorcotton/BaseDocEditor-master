@@ -1,0 +1,96 @@
+.table-editor {
+  padding: 16px 0;
+}
+
+.table-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.table-editor-options {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.table-editor-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--semi-color-text-2);
+}
+
+.text-placeholder {
+  color: var(--semi-color-text-2);
+  font-style: italic;
+}
+
+/* 表格行编辑器样式 */
+.table-row-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.table-row-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.row-count {
+  font-size: 14px;
+  color: var(--semi-color-text-2);
+}
+
+.table-row-editor-list {
+  max-height: 500px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.table-row-editor-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--semi-color-text-2);
+}
+
+.table-row-card {
+  border: 1px solid var(--semi-color-border);
+}
+
+.table-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.row-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.table-row-cells {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.table-cell-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cell-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--semi-color-text-0);
+}
+

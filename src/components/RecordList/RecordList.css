@@ -1,0 +1,20 @@
+.record-list {
+  padding: 16px;
+  background: #fff;
+  min-height: 400px;
+  width: 100%;
+}
+
+.record-list-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  width: 100%;
+}
+
+.field-empty {
+  color: #999;
+  font-style: italic;
+}
+

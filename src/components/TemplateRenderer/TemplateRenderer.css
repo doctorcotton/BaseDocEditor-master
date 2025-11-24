@@ -1,0 +1,209 @@
+/* 模板渲染器样式 */
+
+.template-renderer-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: #f5f5f5;
+  min-height: 100vh;
+  min-width: 850px; /* 确保渲染器有最小宽度 */
+}
+
+.template-renderer {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  min-width: 794px; /* A4 宽度 */
+}
+
+.template-content-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.template-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+/* 元素样式 */
+.template-element {
+  padding: 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.template-element:hover {
+  background: var(--semi-color-fill-0);
+}
+
+/* 文本元素 */
+.template-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+/* 字段元素 */
+.template-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.field-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.field-label {
+  font-weight: 600;
+  color: var(--semi-color-text-1);
+  min-width: 100px;
+}
+
+.field-value {
+  color: var(--semi-color-text-0);
+}
+
+.field-empty {
+  color: var(--semi-color-text-2);
+  font-style: italic;
+}
+
+.field-error {
+  color: var(--semi-color-danger);
+  font-size: 12px;
+}
+
+.field-comment-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--semi-color-primary);
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.field-comment-badge:hover {
+  background: var(--semi-color-primary-hover);
+}
+
+/* 循环区域 */
+.template-loop {
+  position: relative;
+}
+
+.loop-area {
+  padding: 16px;
+  border: 1px dashed var(--semi-color-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.loop-area.loading {
+  text-align: center;
+  color: var(--semi-color-text-2);
+}
+
+.loop-area.empty,
+.loop-empty {
+  text-align: center;
+  color: var(--semi-color-text-2);
+  font-style: italic;
+  padding: 24px;
+}
+
+.loop-item {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--semi-color-fill-0);
+  border-radius: 4px;
+}
+
+.loop-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 表格 */
+.template-table {
+  min-width: 300px;
+}
+
+.table-empty {
+  text-align: center;
+  color: var(--semi-color-text-2);
+  font-style: italic;
+  padding: 24px;
+}
+
+.table-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-cell-comment-badge {
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.table-cell-comment-badge:hover {
+  opacity: 1;
+}
+
+/* 图片 */
+.template-image {
+  border: 1px solid var(--semi-color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--semi-color-fill-0);
+}
+
+.template-image img {
+  display: block;
+}
+
+.image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 100px;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}
+
+/* 链接 */
+.template-link a {
+  color: var(--semi-color-primary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.template-link a:hover {
+  color: var(--semi-color-primary-hover);
+  text-decoration: underline;
+}
+
+.link-empty {
+  color: var(--semi-color-text-2);
+  font-style: italic;
+}
