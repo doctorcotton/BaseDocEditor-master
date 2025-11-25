@@ -18,6 +18,7 @@ interface LoopAreaRendererProps {
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
   onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
+  onLinkedFieldChange?: (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
 }
 
 export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
@@ -27,7 +28,8 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
   table,
   onComment,
   commentStats,
-  onFieldChange
+  onFieldChange,
+  onLinkedFieldChange
 }) => {
   const [linkedRecords, setLinkedRecords] = useState<IRecord[]>([]);
   const [linkedFields, setLinkedFields] = useState<IFieldMeta[]>([]);
@@ -140,6 +142,13 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
         {config.template.map((subElement: TemplateElement) => {
           if (subElement.type === 'table') {
             // 对于表格，传递所有关联记录作为数据源
+            // 创建适配器：将 LoopTableRenderer 的 onFieldChange 转换为 onLinkedFieldChange
+            const handleLinkedTableFieldChange = onLinkedFieldChange 
+              ? (recordId: string, fieldId: string, newValue: any, oldValue: any) => {
+                  onLinkedFieldChange(linkedTable || table, recordId, fieldId, newValue, oldValue);
+                }
+              : undefined;
+            
             return (
               <LoopTableRenderer
                 key={subElement.id}
@@ -149,6 +158,7 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
                 table={linkedTable || table}
                 onComment={onComment}
                 commentStats={commentStats}
+                onFieldChange={handleLinkedTableFieldChange}
               />
             );
           } else {

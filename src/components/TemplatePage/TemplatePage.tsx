@@ -453,6 +453,44 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     }
   };
 
+  // 处理关联表字段变更（产品标准明细表等）
+  const handleLinkedFieldChange = async (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => {
+    if (!linkedTable) {
+      console.warn('[TemplatePage] linkedTable is null');
+      return;
+    }
+
+    try {
+      // 获取关联表的字段元数据
+      const linkedFields = await linkedTable.getFieldMetaList();
+      const field = linkedFields.find((f: any) => f.id === fieldId);
+      
+      if (!field) {
+        console.warn('[TemplatePage] Linked field not found:', fieldId);
+        Toast.error('字段未找到');
+        return;
+      }
+
+      console.log('[TemplatePage] 更新关联表字段:', { 
+        tableId: linkedTable.id, 
+        recordId, 
+        fieldId, 
+        fieldName: field.name,
+        newValue, 
+        oldValue 
+      });
+
+      // 直接使用 setCellValue 更新关联表
+      await linkedTable.setCellValue(fieldId, recordId, newValue);
+      
+      console.log('[TemplatePage] 关联表字段更新成功');
+      // Toast 已经在 LoopTableRenderer 中显示，这里不重复
+    } catch (error: any) {
+      console.error('[TemplatePage] 更新关联表字段失败:', error);
+      Toast.error(`更新失败: ${error.message || '未知错误'}`);
+    }
+  };
+
   return (
     <Layout className="template-page">
       {/* 顶部导航栏 */}
@@ -619,6 +657,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
               onComment={handleOpenComment}
               commentStats={commentStats}
               onFieldChange={handleFieldChange}
+              onLinkedFieldChange={handleLinkedFieldChange}
               refreshKey={refreshKey}
             />
           ) : (

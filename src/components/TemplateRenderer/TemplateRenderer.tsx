@@ -21,6 +21,7 @@ interface TemplateRendererProps {
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
   onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
+  onLinkedFieldChange?: (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
   refreshKey?: number; // 用于触发数据刷新
 }
 
@@ -32,6 +33,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   onComment,
   commentStats,
   onFieldChange,
+  onLinkedFieldChange,
   refreshKey = 0
 }) => {
   // 异步加载字段值（用于字段元素）
@@ -573,6 +575,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         onComment={onComment}
         commentStats={commentStats}
         onFieldChange={onFieldChange}
+        onLinkedFieldChange={onLinkedFieldChange}
       />
     );
   };

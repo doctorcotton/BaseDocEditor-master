@@ -321,3 +321,123 @@
   content: '•';
   color: var(--semi-color-text-2);
 }
+
+/* 循环表格复选框样式 */
+.loop-table-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--semi-color-border, #d9d9d9);
+  border-radius: 3px;
+  background-color: #fff;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.loop-table-checkbox.checked {
+  background-color: var(--semi-color-primary, #0077fa);
+  border-color: var(--semi-color-primary, #0077fa);
+}
+
+.loop-table-checkbox.clickable {
+  cursor: pointer;
+}
+
+.loop-table-checkbox.clickable:hover {
+  border-color: var(--semi-color-primary, #0077fa);
+  box-shadow: 0 0 0 2px rgba(0, 119, 250, 0.2);
+}
+
+.loop-table-checkbox .checkmark {
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* 循环表格可编辑单元格样式 */
+.loop-table-cell-editable {
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.loop-table-cell-editable:hover {
+  background-color: var(--semi-color-fill-0, #f5f5f5);
+}
+
+.loop-table-cell-empty {
+  color: var(--semi-color-text-2, #999);
+  font-style: italic;
+}
+
+/* 循环表格编辑中的单元格 */
+.loop-table-cell-editing {
+  min-width: 100px;
+}
+
+.loop-table-cell-editing .semi-input-wrapper,
+.loop-table-cell-editing .semi-select {
+  width: 100%;
+}
+
+/* 单选编辑器样式优化 */
+.loop-table-select-editing {
+  position: relative;
+  z-index: 100;
+}
+
+.loop-table-select-editing .semi-select {
+  min-width: 180px;
+  background-color: #fff;
+}
+
+.loop-table-select-editing .semi-select .semi-select-selection {
+  background-color: #fff;
+  border: 1px solid var(--semi-color-primary, #0077fa);
+  box-shadow: 0 0 0 2px rgba(0, 119, 250, 0.2);
+}
+
+.loop-table-select-editing .semi-select .semi-select-selection-text {
+  font-size: 14px;
+  color: var(--semi-color-text-0, #1c1f23);
+}
+
+/* 下拉选项样式 */
+.loop-table-select-editing .semi-select-option-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.loop-table-select-editing .semi-select-option {
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+/* 所有表格禁用横向滚动，使用固定布局 */
+.template-table .semi-table-container {
+  overflow-x: visible !important;
+}
+
+.template-table .semi-table {
+  table-layout: fixed !important;
+}
+
+/* 表头不换行 */
+.template-loop .template-table .semi-table-thead th {
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* 表格内容可换行 */
+.template-table .semi-table-tbody td {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}

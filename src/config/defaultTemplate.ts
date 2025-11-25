@@ -32,9 +32,9 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 100 },
       config: {
         columns: [
-          { id: 'col1', label: '', width: 200 },
-          { id: 'col2', label: '', width: 200 },
-          { id: 'col3', label: '', width: 200 }
+          { id: 'col1', label: '', width: 234 },
+          { id: 'col2', label: '', width: 233 },
+          { id: 'col3', label: '', width: 233 }
         ],
         rows: [
           {
@@ -199,7 +199,7 @@ export const DEFAULT_TEMPLATE: Template = {
       config: {
         columns: [
                 { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldrmVU9dG' },
+                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
                 { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
                 { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
                 { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
@@ -255,7 +255,7 @@ export const DEFAULT_TEMPLATE: Template = {
       config: {
         columns: [
                 { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldrmVU9dG' },
+                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
                 { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
                 { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
                 { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
@@ -311,7 +311,7 @@ export const DEFAULT_TEMPLATE: Template = {
       config: {
         columns: [
                 { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldrmVU9dG' },
+                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
                 { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
                 { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
                 { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
@@ -367,7 +367,7 @@ export const DEFAULT_TEMPLATE: Template = {
       config: {
         columns: [
                 { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldrmVU9dG' },
+                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
                 { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
                 { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
                 { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
@@ -423,7 +423,7 @@ export const DEFAULT_TEMPLATE: Template = {
       config: {
         columns: [
                 { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldrmVU9dG' },
+                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
                 { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
                 { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
                 { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },

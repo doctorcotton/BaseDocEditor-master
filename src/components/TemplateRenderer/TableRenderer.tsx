@@ -596,9 +596,12 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
   }
 
   const showHeader = config.showHeader !== false;
+  
+  // 计算表格总宽度（根据列配置）
+  const totalWidth = columns.reduce((sum: number, col: any) => sum + (col.width || 100), 0);
 
   return (
-    <div className="template-element template-table">
+    <div className="template-element template-table" style={{ width: totalWidth }}>
       <Table
         columns={tableColumns}
         dataSource={tableData}
@@ -606,6 +609,7 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
         size="small"
         bordered={config.bordered !== false}
         showHeader={showHeader}
+        style={{ width: totalWidth }}
       />
     </div>
   );
