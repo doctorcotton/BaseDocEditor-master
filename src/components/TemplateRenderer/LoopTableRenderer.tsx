@@ -2,11 +2,15 @@
  * 循环区域表格渲染器
  * 用于在循环区域中渲染表格，多条关联记录作为数据源
  * 支持双击编辑：要求（文本）、检测方法（单选）、入厂检验/COA项目/型式检验（勾选）
+ * 
+ * 级联选择支持：
+ * - 检测方法字段的选项会根据当前记录的检测项目动态筛选
+ * - 通过 optionFilterConfig 配置级联关系
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Table, Input, Select, Toast } from '@douyinfe/semi-ui';
-import { IRecord, IFieldMeta, FieldType } from '@lark-base-open/js-sdk';
+import { IRecord, IFieldMeta, FieldType, bitable } from '@lark-base-open/js-sdk';
 import dayjs from 'dayjs';
 import { TemplateElement } from '../../types/template';
 import { formatFieldValue } from '../../utils/fieldFormatter';
@@ -47,6 +51,66 @@ function isCheckboxField(fieldId: string): boolean {
 function isEditableField(fieldId: string): boolean {
   return EDITABLE_FIELD_IDS.has(fieldId);
 }
+
+/**
+ * 获取字段类型名称（用于调试）
+ */
+function getFieldTypeName(type: number): string {
+  const typeNames: Record<number, string> = {
+    1: '文本',
+    2: '数字',
+    3: '单选',
+    4: '多选',
+    5: '日期',
+    7: '复选框',
+    11: '人员',
+    13: '电话',
+    15: '超链接',
+    17: '附件',
+    18: '单向关联',
+    19: '查找引用',
+    20: '公式',
+    21: '双向关联',
+    22: '地理位置',
+    23: '群组',
+    1001: '创建时间',
+    1002: '修改时间',
+    1003: '创建人',
+    1004: '修改人',
+    1005: '自动编号'
+  };
+  return typeNames[type] || `未知类型(${type})`;
+}
+
+/**
+ * 级联选项筛选配置
+ * 定义哪些字段的选项需要根据其他字段的值来筛选
+ * 
+ * 配置说明：
+ * - targetFieldId: 需要被筛选选项的字段ID（如：检测方法）
+ * - sourceFieldId: 作为筛选条件的字段ID（如：检测项目）
+ * - linkedTableId: 选项来源的关联表ID（如：检测方法库表）
+ * - optionFieldId: 关联表中作为选项显示的字段ID
+ * - filterFieldId: 关联表中用于筛选的字段ID（关联到检测项目）
+ */
+interface OptionFilterConfig {
+  targetFieldId: string;      // 被筛选的字段（检测方法）
+  sourceFieldId: string;      // 筛选依据字段（检测项目）
+  linkedTableId?: string;     // 关联表ID（可选，如果选项来自关联表）
+  optionFieldId?: string;     // 关联表中的选项字段ID
+  filterFieldId?: string;     // 关联表中的筛选字段ID
+}
+
+/**
+ * 默认的级联选项配置
+ * 检测方法根据检测项目筛选
+ */
+const DEFAULT_OPTION_FILTER_CONFIGS: OptionFilterConfig[] = [
+  {
+    targetFieldId: 'fldeffP9dE',  // 检测方法
+    sourceFieldId: 'fldPVBJ4xJ',  // 检测项目
+  }
+];
 
 /**
  * 判断值是否为勾选状态
@@ -109,6 +173,7 @@ interface LoopTableRendererProps {
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
   onFieldChange?: (recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
+  optionFilterConfigs?: OptionFilterConfig[];  // 可选的级联选项配置
 }
 
 export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
@@ -118,7 +183,8 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
   table,
   onComment,
   commentStats,
-  onFieldChange
+  onFieldChange,
+  optionFilterConfigs = DEFAULT_OPTION_FILTER_CONFIGS
 }) => {
   const config = element.config as any;
   const columns = config.columns || [];
@@ -130,6 +196,18 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
   const [editingValue, setEditingValue] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const editingCellRef = useRef<HTMLDivElement | null>(null);
+  
+  // 级联选项缓存：存储每个检测项目对应的检测方法选项
+  // key: 检测项目的值（如选项ID或名称）
+  // value: 可用的检测方法选项列表
+  const [cascadeOptionsCache, setCascadeOptionsCache] = useState<Map<string, any[]>>(new Map());
+  
+  // 关联表数据缓存（用于级联选项筛选）
+  const [linkedTableData, setLinkedTableData] = useState<{
+    tableId: string;
+    records: IRecord[];
+    fields: IFieldMeta[];
+  } | null>(null);
 
   // 异步加载字段值
   useEffect(() => {
@@ -198,6 +276,249 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
 
     loadFieldValues();
   }, [table, records, columns, columnConfig, fields]);
+
+  // 加载级联选项数据
+  // 当检测方法字段需要根据检测项目筛选时，需要获取关联表的数据
+  useEffect(() => {
+    const loadCascadeOptions = async () => {
+      if (!table || records.length === 0 || optionFilterConfigs.length === 0) {
+        return;
+      }
+
+      // 检查是否有需要级联筛选的字段
+      const targetFieldId = optionFilterConfigs[0]?.targetFieldId;
+      const sourceFieldId = optionFilterConfigs[0]?.sourceFieldId;
+      
+      if (!targetFieldId || !sourceFieldId) {
+        return;
+      }
+
+      // 查找目标字段（检测方法）的元数据
+      const targetField = fields.find(f => f.id === targetFieldId);
+      if (!targetField) {
+        console.log('[LoopTableRenderer] 未找到目标字段:', targetFieldId);
+        return;
+      }
+
+      // 详细输出字段信息，帮助调试级联选项配置
+      console.log('=== 级联选项调试信息 ===');
+      console.log('[LoopTableRenderer] 检测方法字段元数据:', JSON.stringify({
+        id: targetField.id,
+        name: targetField.name,
+        type: targetField.type,
+        typeName: getFieldTypeName(targetField.type),
+        property: targetField.property
+      }, null, 2));
+      
+      // 输出所有字段信息，帮助找到关联关系
+      console.log('[LoopTableRenderer] 当前表所有字段:', fields.map(f => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        typeName: getFieldTypeName(f.type)
+      })));
+
+      // 检查字段类型
+      // 如果是单选字段（type=3），选项在 property.options 中
+      // 如果是关联字段（type=18/21），需要从关联表获取数据
+      // 如果是查找引用字段（type=19/23），选项来自关联表
+      
+      const fieldProperty = targetField.property as any;
+      
+      // 方案1：如果检测方法是单选字段，且选项中包含关联到检测项目的信息
+      // 这种情况下，我们需要根据检测项目的值来筛选选项
+      if (targetField.type === FieldType.SingleSelect && fieldProperty?.options) {
+        console.log('[LoopTableRenderer] 检测方法是单选字段，选项数量:', fieldProperty.options.length);
+        
+        // 尝试从选项中解析级联关系
+        // 飞书多维表格的单选选项可能包含额外的元数据
+        // 我们需要建立 检测项目 -> 检测方法选项 的映射
+        
+        // 首先获取所有检测项目的唯一值
+        const sourceField = fields.find(f => f.id === sourceFieldId);
+        if (sourceField) {
+          console.log('[LoopTableRenderer] 检测项目字段元数据:', {
+            id: sourceField.id,
+            name: sourceField.name,
+            type: sourceField.type,
+            property: sourceField.property
+          });
+        }
+        
+        // 方案：如果检测方法的选项需要根据检测项目筛选
+        // 我们需要知道每个检测方法属于哪个检测项目
+        // 这个关系可能存储在：
+        // 1. 选项的名称中（如 "检测项目A-方法1"）
+        // 2. 关联表中
+        // 3. 选项的额外属性中
+        
+        // 暂时先尝试从关联表获取数据（如果存在）
+        try {
+          // 检查是否有 filter_info（查找引用配置）
+          if (fieldProperty?.filter_info) {
+            console.log('[LoopTableRenderer] 检测到 filter_info 配置:', fieldProperty.filter_info);
+            
+            const linkedTableId = fieldProperty.filter_info.target_table;
+            if (linkedTableId) {
+              const linkedTable = await bitable.base.getTable(linkedTableId);
+              const linkedFields = await linkedTable.getFieldMetaList();
+              const linkedRecordIds = await linkedTable.getRecordIdList();
+              
+              // 批量获取关联表记录
+              const linkedRecords: IRecord[] = [];
+              const batchSize = 100;
+              for (let i = 0; i < linkedRecordIds.length; i += batchSize) {
+                const batch = linkedRecordIds.slice(i, i + batchSize);
+                const recordValues = await linkedTable.getRecordsByIds(batch);
+                const records = recordValues.map((recordValue, index) => ({
+                  recordId: batch[index],
+                  fields: recordValue as any
+                }));
+                linkedRecords.push(...records);
+              }
+              
+              setLinkedTableData({
+                tableId: linkedTableId,
+                records: linkedRecords,
+                fields: linkedFields
+              });
+              
+              console.log('[LoopTableRenderer] 加载关联表数据完成:', {
+                tableId: linkedTableId,
+                recordCount: linkedRecords.length,
+                fieldCount: linkedFields.length
+              });
+            }
+          }
+        } catch (error) {
+          console.error('[LoopTableRenderer] 加载级联选项数据失败:', error);
+        }
+      }
+      
+      // 方案2：如果检测方法是关联字段，从关联表获取数据
+      if (targetField.type === 18 || targetField.type === 21) {
+        console.log('[LoopTableRenderer] 检测方法是关联字段');
+        
+        const linkedTableId = fieldProperty?.tableId;
+        if (linkedTableId) {
+          try {
+            const linkedTable = await bitable.base.getTable(linkedTableId);
+            const linkedFields = await linkedTable.getFieldMetaList();
+            const linkedRecordIds = await linkedTable.getRecordIdList();
+            
+            // 批量获取关联表记录
+            const linkedRecords: IRecord[] = [];
+            const batchSize = 100;
+            for (let i = 0; i < linkedRecordIds.length; i += batchSize) {
+              const batch = linkedRecordIds.slice(i, i + batchSize);
+              const recordValues = await linkedTable.getRecordsByIds(batch);
+              const records = recordValues.map((recordValue, index) => ({
+                recordId: batch[index],
+                fields: recordValue as any
+              }));
+              linkedRecords.push(...records);
+            }
+            
+            setLinkedTableData({
+              tableId: linkedTableId,
+              records: linkedRecords,
+              fields: linkedFields
+            });
+            
+            console.log('[LoopTableRenderer] 加载关联表数据完成:', {
+              tableId: linkedTableId,
+              recordCount: linkedRecords.length,
+              fieldCount: linkedFields.length
+            });
+          } catch (error) {
+            console.error('[LoopTableRenderer] 加载关联表数据失败:', error);
+          }
+        }
+      }
+    };
+
+    loadCascadeOptions();
+  }, [table, records, fields, optionFilterConfigs]);
+
+  // 根据检测项目值获取可用的检测方法选项
+  const getFilteredOptions = useCallback((recordId: string, targetFieldId: string, allOptions: any[]): any[] => {
+    // 查找级联配置
+    const filterConfig = optionFilterConfigs.find(c => c.targetFieldId === targetFieldId);
+    if (!filterConfig) {
+      return allOptions; // 没有配置级联筛选，返回所有选项
+    }
+
+    const sourceFieldId = filterConfig.sourceFieldId;
+    
+    // 获取当前记录的检测项目值
+    const recordFieldValues = fieldValuesMap.get(recordId);
+    const sourceValue = recordFieldValues?.get(sourceFieldId);
+    
+    if (!sourceValue) {
+      console.log('[LoopTableRenderer] 未找到检测项目值，返回所有选项');
+      return allOptions;
+    }
+
+    // 提取检测项目的标识（可能是 ID 或名称）
+    const sourceId = sourceValue?.id || sourceValue;
+    const sourceName = sourceValue?.name || sourceValue?.text || extractTextFromValue(sourceValue);
+    
+    console.log('[LoopTableRenderer] 当前检测项目:', { sourceId, sourceName, sourceValue });
+
+    // 如果有关联表数据，从关联表中筛选
+    if (linkedTableData && linkedTableData.records.length > 0) {
+      // 在关联表中查找与当前检测项目匹配的记录
+      // 假设关联表中有一个字段关联到检测项目
+      const filteredRecords = linkedTableData.records.filter(record => {
+        // 遍历记录的所有字段，查找是否有匹配检测项目的值
+        for (const [fieldId, fieldValue] of Object.entries(record.fields || {})) {
+          const valueText = extractTextFromValue(fieldValue);
+          const valueId = (fieldValue as any)?.id;
+          
+          // 检查是否匹配检测项目
+          if (valueId === sourceId || valueText === sourceName) {
+            return true;
+          }
+          
+          // 如果字段值是数组（如关联字段），检查数组中的每个元素
+          if (Array.isArray(fieldValue)) {
+            for (const item of fieldValue) {
+              const itemText = extractTextFromValue(item);
+              const itemId = item?.id || item?.record_id;
+              if (itemId === sourceId || itemText === sourceName) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      });
+
+      console.log('[LoopTableRenderer] 从关联表筛选后的记录数:', filteredRecords.length);
+
+      // 将筛选后的记录转换为选项格式
+      if (filteredRecords.length > 0) {
+        return filteredRecords.map(record => {
+          // 假设第一个文本字段是选项名称
+          const nameField = linkedTableData.fields.find(f => f.type === FieldType.Text);
+          const name = nameField ? extractTextFromValue(record.fields[nameField.id]) : record.recordId;
+          return {
+            id: record.recordId,
+            name: name,
+            text: name
+          };
+        });
+      }
+    }
+
+    // 方案：尝试根据选项名称进行筛选
+    // 如果选项名称中包含检测项目的信息，可以据此筛选
+    // 例如：选项名称格式可能是 "检测项目名称-方法名称" 或者有其他关联方式
+    
+    // 暂时返回所有选项，等待更多信息来实现精确筛选
+    console.log('[LoopTableRenderer] 无法确定筛选规则，返回所有选项');
+    return allOptions;
+  }, [fieldValuesMap, linkedTableData, optionFilterConfigs]);
 
   // 保存编辑
   const handleSaveEdit = useCallback(async () => {
@@ -351,13 +672,25 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
 
   // 渲染单选编辑器
   const renderSelectEditor = (recordId: string, fieldId: string, field: IFieldMeta) => {
-    const options = (field.property as any)?.options || [];
+    const allOptions = (field.property as any)?.options || [];
+    
+    // 应用级联筛选
+    const filteredOptions = getFilteredOptions(recordId, fieldId, allOptions);
+    
+    console.log('[LoopTableRenderer] 渲染单选编辑器', {
+      fieldId,
+      fieldName: field.name,
+      allOptionsCount: allOptions.length,
+      filteredOptionsCount: filteredOptions.length,
+      recordId
+    });
+    
     return (
       <div ref={editingCellRef} className="loop-table-cell-editing loop-table-select-editing">
         <Select
           value={editingValue?.id || editingValue}
           onChange={(val) => {
-            const option = options.find((opt: any) => opt.id === val);
+            const option = filteredOptions.find((opt: any) => opt.id === val);
             setEditingValue(option || val);
             // 选择后自动保存
             setTimeout(() => {
@@ -373,10 +706,11 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
           filter
           placeholder="搜索选项..."
           dropdownStyle={{ maxHeight: 300 }}
-          optionList={options.map((opt: any) => ({
+          optionList={filteredOptions.map((opt: any) => ({
             value: opt.id,
             label: opt.name || opt.text,
           }))}
+          emptyContent={filteredOptions.length === 0 ? "没有可用的选项" : undefined}
         />
       </div>
     );
