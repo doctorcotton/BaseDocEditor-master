@@ -181,8 +181,14 @@ interface LoopTableRendererProps {
   table: any;
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
-  onFieldChange?: (recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
+  onFieldChange?: (
+    recordId: string,
+    fieldId: string,
+    newValue: any,
+    oldValue: any
+  ) => Promise<any> | any;
   optionFilterConfigs?: OptionFilterConfig[];  // 可选的级联选项配置
+  refreshKey?: number; // 用于触发数据刷新
 }
 
 export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
@@ -193,7 +199,8 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
   onComment,
   commentStats,
   onFieldChange,
-  optionFilterConfigs = DEFAULT_OPTION_FILTER_CONFIGS
+  optionFilterConfigs = DEFAULT_OPTION_FILTER_CONFIGS,
+  refreshKey
 }) => {
   const config = element.config as any;
   const columns = config.columns || [];
@@ -284,7 +291,7 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
     };
 
     loadFieldValues();
-  }, [table, records, columns, columnConfig, fields]);
+  }, [table, records, columns, columnConfig, fields, refreshKey]);
 
   // 加载级联选项数据
   // 当检测方法字段需要根据检测项目筛选时，需要获取关联表的数据
@@ -578,26 +585,25 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
       });
     }
 
-    // 无论是否变化都调用 onFieldChange（让上层决定是否真正保存）
-    // 这样可以确保画布刷新
-    if (onFieldChange) {
+    // 只有值真正变化时才调用 onFieldChange（与 TableRenderer 保持一致）
+    // 本地状态更新在这里完成，不需要触发全局刷新
+    if (hasChanged && onFieldChange) {
       setSaving(true);
       try {
-        // 调用回调保存到多维表格
-        await onFieldChange(recordId, fieldId, newValueToSave, oldValue);
+        // 调用回调保存到多维表格，并拿回标准格式的值
+        const updatedValue = await onFieldChange(recordId, fieldId, newValueToSave, oldValue);
+        const finalValue = typeof updatedValue !== 'undefined' ? updatedValue : newValueToSave;
         
-        // 更新本地值
+        // 更新本地值（只更新当前单元格，不触发全局刷新）
         setFieldValuesMap(prev => {
           const newMap = new Map(prev);
           const recordMap = new Map(newMap.get(recordId) || new Map());
-          recordMap.set(fieldId, newValueToSave);
+          recordMap.set(fieldId, finalValue);
           newMap.set(recordId, recordMap);
           return newMap;
         });
         
-        if (hasChanged) {
-          Toast.success(`已更新`);
-        }
+        Toast.success(`已更新`);
       } catch (error: any) {
         console.error('[LoopTableRenderer] 保存失败:', error);
         Toast.error(`保存失败: ${error.message || '未知错误'}`);
@@ -611,7 +617,7 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
   }, [editingCell, editingValue, fieldValuesMap, fields, onFieldChange, saving]);
 
   // 开始编辑
-  const handleStartEdit = useCallback((recordId: string, fieldId: string) => {
+  const handleStartEdit = useCallback(async (recordId: string, fieldId: string) => {
     if (!onFieldChange) return;
     
     const field = fields.find(f => f.id === fieldId);
@@ -625,19 +631,27 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
       const currentChecked = isChecked(rawValue);
       const newChecked = !currentChecked;
       
-      // 直接保存
-      onFieldChange(recordId, fieldId, newChecked, rawValue);
-      
-      // 更新本地值
-      setFieldValuesMap(prev => {
-        const newMap = new Map(prev);
-        const recordMap = new Map(newMap.get(recordId) || new Map());
-        recordMap.set(fieldId, newChecked);
-        newMap.set(recordId, recordMap);
-        return newMap;
-      });
-      
-      Toast.success(`已${newChecked ? '勾选' : '取消勾选'}`);
+      try {
+        setSaving(true);
+        const updatedValue = await onFieldChange(recordId, fieldId, newChecked, rawValue);
+        const finalValue = typeof updatedValue !== 'undefined' ? updatedValue : newChecked;
+
+        // 更新本地值
+        setFieldValuesMap(prev => {
+          const newMap = new Map(prev);
+          const recordMap = new Map(newMap.get(recordId) || new Map());
+          recordMap.set(fieldId, finalValue);
+          newMap.set(recordId, recordMap);
+          return newMap;
+        });
+
+        Toast.success(`已${newChecked ? '勾选' : '取消勾选'}`);
+      } catch (error: any) {
+        console.error('[LoopTableRenderer] 勾选保存失败:', error);
+        Toast.error(`保存失败: ${error.message || '未知错误'}`);
+      } finally {
+        setSaving(false);
+      }
     } else {
       // 其他字段：进入编辑模式
       if (field.type === FieldType.SingleSelect) {
@@ -785,7 +799,23 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
         }
         
         // 普通显示模式
-        const displayText = text || '';
+        let displayText = text || '';
+        if (rawValue !== undefined && field) {
+          displayText = formatFieldValue(rawValue, field.type) || '';
+
+          // 仅显示日期（隐藏具体时间），用于变更记录等只需要年月日的列
+          if (col.format === 'date' && rawValue) {
+            if (typeof rawValue === 'number') {
+              displayText = dayjs(rawValue).format('YYYY-MM-DD');
+            } else if (typeof rawValue === 'string' || typeof displayText === 'string') {
+              const sourceText = typeof displayText === 'string' ? displayText : String(rawValue);
+              const dateMatch = sourceText.match(/^\d{4}-\d{2}-\d{2}/);
+              if (dateMatch) {
+                displayText = dateMatch[0];
+              }
+            }
+          }
+        }
         
         if (isEditable && onFieldChange) {
           return (

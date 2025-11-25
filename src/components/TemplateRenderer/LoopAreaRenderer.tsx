@@ -2,7 +2,7 @@
  * 循环区域渲染器
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { IRecord, IFieldMeta, bitable } from '@lark-base-open/js-sdk';
 import { TemplateElement } from '../../types/template';
 import { getLinkedRecords, filterRecords } from '../../utils/loopAreaFilter';
@@ -17,8 +17,15 @@ interface LoopAreaRendererProps {
   table: any;
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
-  onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
-  onLinkedFieldChange?: (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
+  onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => Promise<any> | any;
+  onLinkedFieldChange?: (
+    linkedTable: any,
+    recordId: string,
+    fieldId: string,
+    newValue: any,
+    oldValue: any
+  ) => Promise<any> | any;
+  refreshKey?: number; // 用于触发数据刷新
 }
 
 export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
@@ -29,7 +36,8 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
   onComment,
   commentStats,
   onFieldChange,
-  onLinkedFieldChange
+  onLinkedFieldChange,
+  refreshKey
 }) => {
   const [linkedRecords, setLinkedRecords] = useState<IRecord[]>([]);
   const [linkedFields, setLinkedFields] = useState<IFieldMeta[]>([]);
@@ -40,9 +48,29 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
   const fieldId = config.fieldId;
   const filter = config.filter;
 
+  const updateLinkedRecordValue = useCallback(
+    (recordId: string, targetFieldId: string, value: any) => {
+      setLinkedRecords(prev =>
+        prev.map(record => {
+          if (record.recordId !== recordId) {
+            return record;
+          }
+          return {
+            ...record,
+            fields: {
+              ...record.fields,
+              [targetFieldId]: value
+            }
+          };
+        })
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     loadLinkedRecords();
-  }, [fieldId, record.recordId]);
+  }, [fieldId, record.recordId, refreshKey]);
 
   const loadLinkedRecords = async () => {
     if (!fieldId) {
@@ -143,9 +171,20 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
           if (subElement.type === 'table') {
             // 对于表格，传递所有关联记录作为数据源
             // 创建适配器：将 LoopTableRenderer 的 onFieldChange 转换为 onLinkedFieldChange
-            const handleLinkedTableFieldChange = onLinkedFieldChange 
-              ? (recordId: string, fieldId: string, newValue: any, oldValue: any) => {
-                  onLinkedFieldChange(linkedTable || table, recordId, fieldId, newValue, oldValue);
+            const handleLinkedTableFieldChange = onLinkedFieldChange
+              ? async (recordId: string, fieldId: string, newValue: any, oldValue: any) => {
+                  const latest = await onLinkedFieldChange(
+                    linkedTable || table,
+                    recordId,
+                    fieldId,
+                    newValue,
+                    oldValue
+                  );
+                  if (typeof latest !== 'undefined') {
+                    updateLinkedRecordValue(recordId, fieldId, latest);
+                    return latest;
+                  }
+                  return newValue;
                 }
               : undefined;
             
@@ -159,6 +198,7 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
                 onComment={onComment}
                 commentStats={commentStats}
                 onFieldChange={handleLinkedTableFieldChange}
+                refreshKey={refreshKey}
               />
             );
           } else {

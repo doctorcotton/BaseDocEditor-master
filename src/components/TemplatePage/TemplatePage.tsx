@@ -7,8 +7,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip, Slider, Select } from '@douyinfe/semi-ui';
 import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo, IconRefresh, IconArrowLeft, IconDownload } from '@douyinfe/semi-icons';
 import { bitable, IRecord, IFieldMeta, ITable, FieldType } from '@lark-base-open/js-sdk';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { pdf } from '@react-pdf/renderer';
 import dayjs from 'dayjs';
 import { Template } from '../../types/template';
 import { TemplateEditor } from '../TemplateEditor/TemplateEditor';
@@ -21,6 +20,8 @@ import { useUndoRedo, useUndoRedoKeyboard, UndoableAction } from '../../hooks/us
 import { FieldChange } from '../../types';
 import { DEFAULT_TEMPLATE } from '../../config/defaultTemplate';
 import { formatFieldValue } from '../../utils/fieldFormatter';
+import { PdfDocument } from '../PdfExport/PdfDocument';
+import { preloadLoopData } from '../../utils/pdfLoader';
 import './TemplatePage.css';
 
 const { Sider, Content } = Layout;
@@ -449,7 +450,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     const field = fields.find(f => f.id === fieldId);
     if (!field) {
       console.warn('[TemplatePage] Field not found:', fieldId);
-      return;
+      return oldValue;
     }
 
     // 创建字段变更记录
@@ -498,6 +499,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
         });
         
         Toast.success(`字段"${field.name}"已更新`);
+        return newValue;
       } else {
         // 更新变更状态为失败
         setPendingChanges(prev => 
@@ -513,13 +515,22 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       console.error('[TemplatePage] 同步字段变更失败:', error);
       Toast.error(`同步失败: ${error.message || '未知错误'}`);
     }
+    return oldValue;
   };
 
   // 处理关联表字段变更（产品标准明细表、标准变更记录表等）
-  const handleLinkedFieldChange = async (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => {
+  // 注意：LoopTableRenderer 已经更新了本地状态，这里只负责同步到多维表格和记录撤销栈
+  // 不再触发全局刷新（setRefreshKey），避免整个页面闪烁
+  const handleLinkedFieldChange = async (
+    linkedTable: any,
+    recordId: string,
+    fieldId: string,
+    newValue: any,
+    oldValue: any
+  ) => {
     if (!linkedTable) {
       console.warn('[TemplatePage] linkedTable is null');
-      return;
+      return oldValue;
     }
 
     try {
@@ -530,7 +541,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       if (!field) {
         console.warn('[TemplatePage] Linked field not found:', fieldId);
         Toast.error('字段未找到');
-        return;
+        return oldValue;
       }
 
       // 统一转换为字符串进行比较
@@ -551,11 +562,23 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       });
 
       // 只有真正变化时才更新
+      let latestValue: any = newValue;
+
       if (hasChanged) {
         // 直接使用 setCellValue 更新关联表
         await linkedTable.setCellValue(fieldId, recordId, newValue);
         
         console.log('[TemplatePage] 关联表字段更新成功');
+
+        try {
+          // 重新拉取一次该字段的值，确保画布拿到的是标准格式
+          const refreshed = await linkedTable.getCellValue(fieldId, recordId);
+          if (typeof refreshed !== 'undefined') {
+            latestValue = refreshed;
+          }
+        } catch (refreshErr) {
+          console.warn('[TemplatePage] 获取最新字段值失败，使用提交值回填', refreshErr);
+        }
         
         // 记录到撤销栈（支持关联表字段的撤销/重做）
         pushAction({
@@ -563,20 +586,23 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
           fieldName: field.name,
           recordId: recordId,
           oldValue: oldValue,
-          newValue: newValue,
+          newValue: latestValue,
           linkedTableId: linkedTable.id,
           isLinkedTable: true
         });
       }
       
-      // 无论是否变化都刷新画布显示（确保 UI 同步）
-      setRefreshKey(prev => prev + 1);
+      // 注意：不再调用 setRefreshKey，因为 LoopTableRenderer 已经更新了本地状态
+      // 这样可以避免整个页面刷新导致的闪烁
+      // 只有在撤销/重做操作时才需要全局刷新（在 handleUndoAction/handleRedoAction 中处理）
       
       // Toast 已经在 LoopTableRenderer 中显示，这里不重复
+      return latestValue;
     } catch (error: any) {
       console.error('[TemplatePage] 更新关联表字段失败:', error);
       Toast.error(`更新失败: ${error.message || '未知错误'}`);
     }
+    return oldValue;
   };
 
   const getFieldDisplayValue = useCallback(
@@ -607,95 +633,40 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
 
   const handleExportPdf = useCallback(
     async (targetFieldId?: string) => {
-      const renderer = document.querySelector('.template-renderer') as HTMLElement | null;
-      if (!renderer) {
-        Toast.error('未找到画布内容');
+      if (!selectedTemplate) {
+        Toast.error('请先选择模板');
         return;
       }
+      
       const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
       setExportingPdf(true);
+      
       try {
-        // 获取所有表格元素的位置信息（用于避免在表格中间分页）
-        const tables = renderer.querySelectorAll('.template-table, .loop-area');
-        const tablePositions: Array<{ top: number; bottom: number }> = [];
+        // 预加载循环区域数据
+        console.log('[TemplatePage] 开始预加载循环数据...');
+        const loopDataCache = await preloadLoopData(selectedTemplate, record, table);
+        console.log('[TemplatePage] 循环数据预加载完成');
         
-        // 计算缩放比例
-        const scale = 2; // html2canvas 的缩放比例
-        
-        tables.forEach((table) => {
-          const rect = table.getBoundingClientRect();
-          const rendererRect = renderer.getBoundingClientRect();
-          // 相对于 renderer 的位置
-          const relativeTop = (rect.top - rendererRect.top) * scale;
-          const relativeBottom = (rect.bottom - rendererRect.top) * scale;
-          tablePositions.push({ 
-            top: relativeTop, 
-            bottom: relativeBottom 
-          });
-        });
-        
-        const canvas = await html2canvas(renderer, {
-          scale: scale,
-          useCORS: true,
-          backgroundColor: '#ffffff'
-        });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'pt', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pageWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        // 智能分页函数：避免在表格中间分页
-        const getNextPageBreak = (currentPosition: number): number => {
-          const idealBreak = currentPosition + pageHeight;
-          
-          // 检查理想分页位置是否在某个表格中间
-          for (const tablePos of tablePositions) {
-            const tableTop = tablePos.top * (imgHeight / canvas.height);
-            const tableBottom = tablePos.bottom * (imgHeight / canvas.height);
-            
-            // 如果分页线在表格中间，调整到表格前面
-            if (idealBreak > tableTop && idealBreak < tableBottom) {
-              // 如果表格起始位置在当前页内（距离当前位置至少 100pt），则分页到表格前
-              if (tableTop - currentPosition > 100) {
-                return tableTop;
-              } else {
-                // 否则，将整个表格放到下一页（分页到表格后）
-                return tableBottom;
-              }
-            }
-          }
-          
-          return idealBreak;
-        };
-        
-        // 第一页
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        
-        let currentPosition = pageHeight;
-        
-        // 后续页面：使用智能分页
-        while (currentPosition < imgHeight) {
-          const nextBreak = getNextPageBreak(currentPosition);
-          
-          if (nextBreak >= imgHeight) {
-            break; // 已经到达最后
-          }
-          
-          pdf.addPage();
-          const yOffset = currentPosition - imgHeight;
-          pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
-          
-          currentPosition = nextBreak;
-        }
+        // 使用 React-PDF 生成 PDF
+        console.log('[TemplatePage] 开始生成 PDF...');
+        const blob = await pdf(
+          <PdfDocument 
+            template={selectedTemplate}
+            record={record}
+            fields={fields}
+            table={table}
+            printTimestamp={now}
+            loopDataCache={loopDataCache}
+          />
+        ).toBlob();
+        console.log('[TemplatePage] PDF 生成成功');
 
         const rawFileName = await buildPdfFileName();
         const safeFileName = sanitizeFileName(rawFileName || '标准文档');
 
         if (targetFieldId) {
-          const pdfBlob = pdf.output('blob');
-          const pdfFile = new File([pdfBlob], `${safeFileName}.pdf`, { type: 'application/pdf' });
+          // 上传到附件字段
+          const pdfFile = new File([blob], `${safeFileName}.pdf`, { type: 'application/pdf' });
           const tokens = await bitable.base.batchUploadFile([pdfFile]);
           if (!tokens || tokens.length === 0) {
             throw new Error('上传失败，未返回文件 token');
@@ -712,10 +683,19 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
           await table.setCellValue(targetFieldId, record.recordId, attachmentValue as any);
           Toast.success('PDF 已上传到附件字段');
         } else {
-          pdf.save(`${safeFileName}.pdf`);
+          // 下载 PDF
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${safeFileName}.pdf`;
+          link.click();
+          URL.revokeObjectURL(url);
           Toast.success('PDF 已下载');
         }
+        
         setLastPrintTimestamp(now);
+        
+        // 更新打印信息字段
         if (printInfoFieldId) {
           try {
             const existingValue = await table.getCellValue(printInfoFieldId, record.recordId);
@@ -728,6 +708,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
             console.warn('[TemplatePage] 更新打印信息字段失败:', error);
           }
         }
+        
         setShowExportModal(false);
         setPdfAttachmentFieldId('');
       } catch (error: any) {
@@ -737,7 +718,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
         setExportingPdf(false);
       }
     },
-    [buildPdfFileName, record.recordId, table, printInfoFieldId]
+    [buildPdfFileName, record, fields, table, printInfoFieldId, selectedTemplate]
   );
 
   return (
@@ -782,6 +763,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
                 </Button>
               </div>
               <div className="undo-redo-buttons">
+                {/* PDF 导出功能暂时隐藏，代码保留供后续使用
                 <Tooltip content="导出 / 上传 PDF">
                   <Button
                     icon={<IconDownload />}
@@ -789,6 +771,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
                     onClick={() => setShowExportModal(true)}
                   />
                 </Tooltip>
+                */}
                 <Tooltip content="刷新画布">
                   <Button
                     icon={<IconRefresh />}

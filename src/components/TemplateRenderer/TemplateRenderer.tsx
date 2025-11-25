@@ -20,8 +20,14 @@ interface TemplateRendererProps {
   table: any; // ITable
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
-  onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
-  onLinkedFieldChange?: (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
+  onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => Promise<any> | any;
+  onLinkedFieldChange?: (
+    linkedTable: any,
+    recordId: string,
+    fieldId: string,
+    newValue: any,
+    oldValue: any
+  ) => Promise<any> | any;
   refreshKey?: number; // 用于触发数据刷新
   zoomLevel?: number; // 缩放比例（从父组件传入）
   printTimestamp?: string; // 打印时间戳
@@ -625,6 +631,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         commentStats={commentStats}
         onFieldChange={onFieldChange}
         onLinkedFieldChange={onLinkedFieldChange}
+        refreshKey={refreshKey}
       />
     );
   };
