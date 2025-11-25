@@ -72,12 +72,32 @@
   min-width: 0; /* 允许内容超出时显示滚动条 */
 }
 
+/* 隐藏侧边栏（保留代码，仅 CSS 隐藏，后续可移除此规则恢复显示） */
 .template-sidebar {
+  display: none;
+  /* 原样式保留供后续恢复使用
   background: var(--semi-color-bg-1);
   border-right: 1px solid var(--semi-color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  */
+}
+
+/* 悬浮返回按钮 */
+.floating-back-button {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 100;
+  background: var(--semi-color-bg-0);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+}
+
+.floating-back-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-header {

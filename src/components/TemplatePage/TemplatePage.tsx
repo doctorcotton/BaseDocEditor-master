@@ -723,17 +723,19 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
 
   return (
     <Layout className="template-page">
+      {/* 悬浮返回按钮 */}
+      <Button 
+        onClick={onBack} 
+        type="tertiary"
+        icon={<IconArrowLeft />}
+        className="floating-back-button"
+      >
+        返回
+      </Button>
+
       {/* 顶部导航栏 */}
       <div className="template-page-header">
         <div className="header-left">
-          <Button 
-            onClick={onBack} 
-            type="tertiary"
-            icon={<IconArrowLeft />}
-            className="back-button"
-          >
-            返回
-          </Button>
           <Title heading={4} className="record-title">
             {recordName}
           </Title>
