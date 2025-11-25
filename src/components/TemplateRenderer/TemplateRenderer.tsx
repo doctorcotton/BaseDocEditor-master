@@ -24,6 +24,7 @@ interface TemplateRendererProps {
   onLinkedFieldChange?: (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
   refreshKey?: number; // 用于触发数据刷新
   zoomLevel?: number; // 缩放比例（从父组件传入）
+  printTimestamp?: string; // 打印时间戳
 }
 
 export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
@@ -36,8 +37,11 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   onFieldChange,
   onLinkedFieldChange,
   refreshKey = 0,
-  zoomLevel = 100
+  zoomLevel = 100,
+  printTimestamp
 }) => {
+  const rendererRef = useRef<HTMLDivElement | null>(null);
+  const [pageBreaks, setPageBreaks] = useState<number[]>([]);
   // 异步加载字段值（用于字段元素）
   const [fieldValues, setFieldValues] = useState<Map<string, any>>(new Map());
   // 正在编辑的字段ID
@@ -100,6 +104,43 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
 
     loadFieldValues();
   }, [table, record?.recordId, template.elements, refreshKey]);
+
+  // 页面分割线计算
+  useEffect(() => {
+    const element = rendererRef.current;
+    if (!element) return;
+    const pageHeight = template.styles?.pageHeight || 1123;
+    const scale = zoomLevel / 100;
+
+    const updateBreaks = () => {
+      // 获取内容区域
+      const contentElement = element.querySelector('.template-content-flow') as HTMLElement;
+      if (!contentElement) return;
+      
+      // 获取元素的计算样式
+      const computedStyle = window.getComputedStyle(element);
+      const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+      
+      // 获取内容的实际高度（不包括 padding）
+      const contentHeight = contentElement.scrollHeight;
+      
+      // 计算页面数量（减去 padding 后的可用高度）
+      const availablePageHeight = pageHeight - paddingTop * 2; // 上下 padding
+      const pageCount = Math.floor(contentHeight / availablePageHeight);
+      
+      const breaks: number[] = [];
+      for (let i = 1; i <= pageCount; i++) {
+        // 分页线位置 = padding + i * 可用高度
+        breaks.push((paddingTop + i * availablePageHeight) * scale);
+      }
+      setPageBreaks(breaks);
+    };
+
+    updateBreaks();
+    const observer = new ResizeObserver(() => updateBreaks());
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [template.styles?.pageHeight, zoomLevel, refreshKey, template.elements.length]);
 
   // 自动保存并退出编辑
   const handleSaveAndExit = useCallback(() => {
@@ -276,7 +317,13 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     const isTitle = element.id === 'title';
     
     if (isTitle) {
-      const titleText = displayValue ? `${displayValue} 原料品质标准` : '未命名记录 原料品质标准';
+      const VERSION_FIELD_ID = 'fldL7m1ZTN';
+      const versionField = context.fields.find(f => f.id === VERSION_FIELD_ID);
+      const versionRawValue = context.record.fields?.[VERSION_FIELD_ID];
+      const versionText = versionField ? formatFieldValue(versionRawValue, versionField.type) : '';
+      const baseTitle = displayValue || '未命名记录';
+      const suffix = versionText ? `原料品质标准-${versionText}` : '原料品质标准';
+      const titleText = `${baseTitle} ${suffix}`;
       return (
         <div
           key={element.id}
@@ -772,6 +819,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     <div className="template-renderer-wrapper">
       <div 
         className="template-renderer"
+        ref={rendererRef}
         style={{
           width: pageWidth,
           minHeight: pageHeight,
@@ -779,6 +827,13 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
           transformOrigin: 'top center'
         }}
       >
+        <div className="page-guides">
+          {pageBreaks.map((top, index) => (
+            <div key={index} className="page-guide-line" style={{ top }}>
+              <span className="page-guide-label">第 {index + 2} 页</span>
+            </div>
+          ))}
+        </div>
         <div className="template-content-flow">
           {template.elements.length === 0 ? (
             <div className="template-empty">
@@ -790,6 +845,11 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
             })
           )}
         </div>
+        {printTimestamp && (
+          <div className="template-print-timestamp">
+            打印时间：{printTimestamp}
+          </div>
+        )}
       </div>
     </div>
   );

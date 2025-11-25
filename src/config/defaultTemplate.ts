@@ -19,7 +19,7 @@ export const DEFAULT_TEMPLATE: Template = {
       type: 'field',
       position: { x: 40, y: 40 },
       config: {
-        fieldId: 'fld3g1HhuN',
+        fieldId: 'fldVmqTOV6',
         fieldPath: '标准名称',
         format: ''
       }

@@ -23,6 +23,7 @@
   min-width: 794px; /* A4 宽度 */
   box-sizing: border-box;
   transition: transform 0.15s ease-out;
+  position: relative;
 }
 
 .template-content-flow {
@@ -30,6 +31,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  padding-bottom: 120px; /* 保证打印时间有空间 */
 }
 
 .template-empty {
@@ -520,4 +522,44 @@
   overflow-wrap: break-word;
   font-size: 13px;
   padding: 6px 8px !important;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.template-table .semi-table-tbody tr,
+.template-table .semi-table-row,
+.template-table table {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.page-guides {
+  position: absolute;
+  left: -70px;
+  top: 0;
+  width: 60px;
+  pointer-events: none;
+}
+
+.page-guide-line {
+  position: absolute;
+  width: 60px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.2);
+  text-align: right;
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+  padding-top: 2px;
+}
+
+.page-guide-label {
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0 4px;
+}
+
+.template-print-timestamp {
+  position: absolute;
+  right: 40px;
+  bottom: 30px;
+  font-size: 12px;
+  color: var(--semi-color-text-2);
 }

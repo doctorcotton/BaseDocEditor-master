@@ -3,10 +3,13 @@
  * 参考排版打印页面的布局：左侧边栏（模板列表）+ 主内容区（模板编辑器/渲染器）
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip, Slider } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo, IconRefresh, IconArrowLeft } from '@douyinfe/semi-icons';
-import { bitable, IRecord, IFieldMeta, ITable } from '@lark-base-open/js-sdk';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip, Slider, Select } from '@douyinfe/semi-ui';
+import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo, IconRefresh, IconArrowLeft, IconDownload } from '@douyinfe/semi-icons';
+import { bitable, IRecord, IFieldMeta, ITable, FieldType } from '@lark-base-open/js-sdk';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import dayjs from 'dayjs';
 import { Template } from '../../types/template';
 import { TemplateEditor } from '../TemplateEditor/TemplateEditor';
 import { TemplateRenderer } from '../TemplateRenderer/TemplateRenderer';
@@ -17,6 +20,7 @@ import { useDocumentSync } from '../../hooks/useDocumentSync';
 import { useUndoRedo, useUndoRedoKeyboard, UndoableAction } from '../../hooks/useUndoRedo';
 import { FieldChange } from '../../types';
 import { DEFAULT_TEMPLATE } from '../../config/defaultTemplate';
+import { formatFieldValue } from '../../utils/fieldFormatter';
 import './TemplatePage.css';
 
 const { Sider, Content } = Layout;
@@ -36,6 +40,9 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
   table,
   onBack
 }) => {
+  const STANDARD_NAME_FIELD_ID = 'fldVmqTOV6';
+  const VERSION_FIELD_ID = 'fldL7m1ZTN';
+
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('preview');
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
@@ -187,6 +194,17 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
   
   // 画布缩放比例（50% - 200%）
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [pdfAttachmentFieldId, setPdfAttachmentFieldId] = useState<string>('');
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [lastPrintTimestamp, setLastPrintTimestamp] = useState<string>('');
+  const attachmentFields = useMemo(
+    () => fields.filter(f => f.type === FieldType.Attachment),
+    [fields]
+  );
+  const printInfoFieldId = useMemo(() => {
+    return fields.find(f => f.name === '打印信息')?.id || '';
+  }, [fields]);
 
   // 处理滚轮缩放（Cmd/Ctrl + 滚轮）- 绑定到 document
   useEffect(() => {
@@ -561,6 +579,167 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     }
   };
 
+  const getFieldDisplayValue = useCallback(
+    async (fieldId: string): Promise<string> => {
+      const field = fields.find(f => f.id === fieldId);
+      if (!field) return '';
+      let value = record.fields?.[fieldId];
+      if (value === undefined) {
+        try {
+          value = await table.getCellValue(fieldId, record.recordId);
+        } catch (error) {
+          console.warn('[TemplatePage] 获取字段值失败', { fieldId, error });
+        }
+      }
+      return formatFieldValue(value, field.type);
+    },
+    [fields, record, table]
+  );
+
+  const buildPdfFileName = useCallback(async (): Promise<string> => {
+    const standardName = (await getFieldDisplayValue(STANDARD_NAME_FIELD_ID)) || recordName || '未命名记录';
+    const version = await getFieldDisplayValue(VERSION_FIELD_ID);
+    const suffix = version ? `原料品质标准-${version}` : '原料品质标准';
+    return `${standardName} ${suffix}`;
+  }, [getFieldDisplayValue, recordName]);
+
+  const sanitizeFileName = (name: string) => name.replace(/[\\/:*?"<>|]/g, '_');
+
+  const handleExportPdf = useCallback(
+    async (targetFieldId?: string) => {
+      const renderer = document.querySelector('.template-renderer') as HTMLElement | null;
+      if (!renderer) {
+        Toast.error('未找到画布内容');
+        return;
+      }
+      const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+      setExportingPdf(true);
+      try {
+        // 获取所有表格元素的位置信息（用于避免在表格中间分页）
+        const tables = renderer.querySelectorAll('.template-table, .loop-area');
+        const tablePositions: Array<{ top: number; bottom: number }> = [];
+        
+        // 计算缩放比例
+        const scale = 2; // html2canvas 的缩放比例
+        
+        tables.forEach((table) => {
+          const rect = table.getBoundingClientRect();
+          const rendererRect = renderer.getBoundingClientRect();
+          // 相对于 renderer 的位置
+          const relativeTop = (rect.top - rendererRect.top) * scale;
+          const relativeBottom = (rect.bottom - rendererRect.top) * scale;
+          tablePositions.push({ 
+            top: relativeTop, 
+            bottom: relativeBottom 
+          });
+        });
+        
+        const canvas = await html2canvas(renderer, {
+          scale: scale,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'pt', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // 智能分页函数：避免在表格中间分页
+        const getNextPageBreak = (currentPosition: number): number => {
+          const idealBreak = currentPosition + pageHeight;
+          
+          // 检查理想分页位置是否在某个表格中间
+          for (const tablePos of tablePositions) {
+            const tableTop = tablePos.top * (imgHeight / canvas.height);
+            const tableBottom = tablePos.bottom * (imgHeight / canvas.height);
+            
+            // 如果分页线在表格中间，调整到表格前面
+            if (idealBreak > tableTop && idealBreak < tableBottom) {
+              // 如果表格起始位置在当前页内（距离当前位置至少 100pt），则分页到表格前
+              if (tableTop - currentPosition > 100) {
+                return tableTop;
+              } else {
+                // 否则，将整个表格放到下一页（分页到表格后）
+                return tableBottom;
+              }
+            }
+          }
+          
+          return idealBreak;
+        };
+        
+        // 第一页
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        
+        let currentPosition = pageHeight;
+        
+        // 后续页面：使用智能分页
+        while (currentPosition < imgHeight) {
+          const nextBreak = getNextPageBreak(currentPosition);
+          
+          if (nextBreak >= imgHeight) {
+            break; // 已经到达最后
+          }
+          
+          pdf.addPage();
+          const yOffset = currentPosition - imgHeight;
+          pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+          
+          currentPosition = nextBreak;
+        }
+
+        const rawFileName = await buildPdfFileName();
+        const safeFileName = sanitizeFileName(rawFileName || '标准文档');
+
+        if (targetFieldId) {
+          const pdfBlob = pdf.output('blob');
+          const pdfFile = new File([pdfBlob], `${safeFileName}.pdf`, { type: 'application/pdf' });
+          const tokens = await bitable.base.batchUploadFile([pdfFile]);
+          if (!tokens || tokens.length === 0) {
+            throw new Error('上传失败，未返回文件 token');
+          }
+          const attachmentValue = [
+            {
+              name: pdfFile.name,
+              size: pdfFile.size,
+              type: pdfFile.type,
+              token: tokens[0],
+              timeStamp: Date.now()
+            }
+          ];
+          await table.setCellValue(targetFieldId, record.recordId, attachmentValue as any);
+          Toast.success('PDF 已上传到附件字段');
+        } else {
+          pdf.save(`${safeFileName}.pdf`);
+          Toast.success('PDF 已下载');
+        }
+        setLastPrintTimestamp(now);
+        if (printInfoFieldId) {
+          try {
+            const existingValue = await table.getCellValue(printInfoFieldId, record.recordId);
+            const existingText = formatFieldValue(existingValue, FieldType.Text) || '';
+            const actionLabel = targetFieldId ? '导出并上传 PDF' : '下载 PDF';
+            const newEntry = `${now} ${actionLabel}`;
+            const combined = existingText ? `${existingText}\n${newEntry}` : newEntry;
+            await table.setCellValue(printInfoFieldId, record.recordId, combined);
+          } catch (error) {
+            console.warn('[TemplatePage] 更新打印信息字段失败:', error);
+          }
+        }
+        setShowExportModal(false);
+        setPdfAttachmentFieldId('');
+      } catch (error: any) {
+        console.error('[TemplatePage] 导出 PDF 失败:', error);
+        Toast.error(`导出 PDF 失败：${error.message || '未知错误'}`);
+      } finally {
+        setExportingPdf(false);
+      }
+    },
+    [buildPdfFileName, record.recordId, table, printInfoFieldId]
+  );
+
   return (
     <Layout className="template-page">
       {/* 顶部导航栏 */}
@@ -603,6 +782,13 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
                 </Button>
               </div>
               <div className="undo-redo-buttons">
+                <Tooltip content="导出 / 上传 PDF">
+                  <Button
+                    icon={<IconDownload />}
+                    type="tertiary"
+                    onClick={() => setShowExportModal(true)}
+                  />
+                </Tooltip>
                 <Tooltip content="刷新画布">
                   <Button
                     icon={<IconRefresh />}
@@ -768,6 +954,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
               onLinkedFieldChange={handleLinkedFieldChange}
               refreshKey={refreshKey}
               zoomLevel={zoomLevel}
+              printTimestamp={lastPrintTimestamp}
             />
           ) : (
             <div className="template-empty">
@@ -776,6 +963,37 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
           )}
         </Content>
       </Layout>
+
+      {/* 导出 PDF 设置 */}
+      <Modal
+        title="导出 PDF"
+        visible={showExportModal}
+        confirmLoading={exportingPdf}
+        okText={pdfAttachmentFieldId ? '导出并上传' : '下载 PDF'}
+        onOk={() => handleExportPdf(pdfAttachmentFieldId || undefined)}
+        onCancel={() => {
+          setShowExportModal(false);
+          setPdfAttachmentFieldId('');
+        }}
+      >
+        <Text type="tertiary">
+          默认仅下载 PDF。如需同步到多维表格，请选择一个附件字段，我们会将导出的文件上传到该字段。
+        </Text>
+        <Select
+          placeholder={attachmentFields.length ? '选择附件字段（可选）' : '当前表中没有附件字段可选'}
+          disabled={attachmentFields.length === 0}
+          value={pdfAttachmentFieldId}
+          onChange={(value) => setPdfAttachmentFieldId((value as string) || '')}
+          style={{ width: '100%', marginTop: 12 }}
+        >
+          <Select.Option value="">不上传（仅下载）</Select.Option>
+          {attachmentFields.map(field => (
+            <Select.Option value={field.id} key={field.id}>
+              {field.name}
+            </Select.Option>
+          ))}
+        </Select>
+      </Modal>
 
       {/* 创建模板对话框 */}
       <Modal
