@@ -23,6 +23,7 @@ interface TemplateRendererProps {
   onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
   onLinkedFieldChange?: (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => void;
   refreshKey?: number; // 用于触发数据刷新
+  zoomLevel?: number; // 缩放比例（从父组件传入）
 }
 
 export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
@@ -34,7 +35,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   commentStats,
   onFieldChange,
   onLinkedFieldChange,
-  refreshKey = 0
+  refreshKey = 0,
+  zoomLevel = 100
 }) => {
   // 异步加载字段值（用于字段元素）
   const [fieldValues, setFieldValues] = useState<Map<string, any>>(new Map());
@@ -280,7 +282,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
           key={element.id}
           className="template-element template-field template-title"
           style={{
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: 'bold',
             textAlign: 'center',
             marginBottom: 20
@@ -772,7 +774,9 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         className="template-renderer"
         style={{
           width: pageWidth,
-          minHeight: pageHeight
+          minHeight: pageHeight,
+          transform: `scale(${zoomLevel / 100})`,
+          transformOrigin: 'top center'
         }}
       >
         <div className="template-content-flow">

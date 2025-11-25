@@ -3,9 +3,9 @@
  * 参考排版打印页面的布局：左侧边栏（模板列表）+ 主内容区（模板编辑器/渲染器）
  */
 
-import React, { useState, useEffect } from 'react';
-import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo } from '@douyinfe/semi-icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip, Slider } from '@douyinfe/semi-ui';
+import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo, IconRefresh, IconArrowLeft } from '@douyinfe/semi-icons';
 import { bitable, IRecord, IFieldMeta, ITable } from '@lark-base-open/js-sdk';
 import { Template } from '../../types/template';
 import { TemplateEditor } from '../TemplateEditor/TemplateEditor';
@@ -77,21 +77,33 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
 
   // 撤销/重做功能
   const handleUndoAction = async (action: UndoableAction): Promise<boolean> => {
-    // 撤销操作：将字段值恢复为 oldValue
-    const field = fields.find(f => f.id === action.fieldId);
-    if (!field) return false;
-
-    const change: FieldChange = {
-      recordId: action.recordId,
-      fieldId: action.fieldId,
-      fieldName: action.fieldName,
-      oldValue: action.newValue, // 当前值变成旧值
-      newValue: action.oldValue, // 恢复到旧值
-      timestamp: Date.now(),
-      status: 'pending'
-    };
-
     try {
+      // 判断是否是关联表字段
+      if (action.isLinkedTable && action.linkedTableId) {
+        // 关联表字段：直接使用 setCellValue 更新关联表
+        const linkedTable = await bitable.base.getTable(action.linkedTableId);
+        await linkedTable.setCellValue(action.fieldId, action.recordId, action.oldValue);
+        
+        // 刷新画布显示
+        setRefreshKey(prev => prev + 1);
+        Toast.info(`已撤销：${action.fieldName}`);
+        return true;
+      }
+      
+      // 主表字段：使用 syncChanges
+      const field = fields.find(f => f.id === action.fieldId);
+      if (!field) return false;
+
+      const change: FieldChange = {
+        recordId: action.recordId,
+        fieldId: action.fieldId,
+        fieldName: action.fieldName,
+        oldValue: action.newValue, // 当前值变成旧值
+        newValue: action.oldValue, // 恢复到旧值
+        timestamp: Date.now(),
+        status: 'pending'
+      };
+
       const success = await syncChanges(table, [change], fields);
       if (success) {
         // 刷新画布显示
@@ -103,26 +115,39 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       return false;
     } catch (error) {
       console.error('[TemplatePage] 撤销失败:', error);
+      Toast.error(`撤销失败：${action.fieldName}`);
       return false;
     }
   };
 
   const handleRedoAction = async (action: UndoableAction): Promise<boolean> => {
-    // 重做操作：将字段值恢复为 newValue
-    const field = fields.find(f => f.id === action.fieldId);
-    if (!field) return false;
-
-    const change: FieldChange = {
-      recordId: action.recordId,
-      fieldId: action.fieldId,
-      fieldName: action.fieldName,
-      oldValue: action.oldValue,
-      newValue: action.newValue,
-      timestamp: Date.now(),
-      status: 'pending'
-    };
-
     try {
+      // 判断是否是关联表字段
+      if (action.isLinkedTable && action.linkedTableId) {
+        // 关联表字段：直接使用 setCellValue 更新关联表
+        const linkedTable = await bitable.base.getTable(action.linkedTableId);
+        await linkedTable.setCellValue(action.fieldId, action.recordId, action.newValue);
+        
+        // 刷新画布显示
+        setRefreshKey(prev => prev + 1);
+        Toast.info(`已重做：${action.fieldName}`);
+        return true;
+      }
+      
+      // 主表字段：使用 syncChanges
+      const field = fields.find(f => f.id === action.fieldId);
+      if (!field) return false;
+
+      const change: FieldChange = {
+        recordId: action.recordId,
+        fieldId: action.fieldId,
+        fieldName: action.fieldName,
+        oldValue: action.oldValue,
+        newValue: action.newValue,
+        timestamp: Date.now(),
+        status: 'pending'
+      };
+
       const success = await syncChanges(table, [change], fields);
       if (success) {
         // 刷新画布显示
@@ -134,6 +159,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       return false;
     } catch (error) {
       console.error('[TemplatePage] 重做失败:', error);
+      Toast.error(`重做失败：${action.fieldName}`);
       return false;
     }
   };
@@ -158,6 +184,24 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
   
   // 待同步的字段变更
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
+  
+  // 画布缩放比例（50% - 200%）
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+
+  // 处理滚轮缩放（Cmd/Ctrl + 滚轮）- 绑定到 document
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      // 检查是否按住 Cmd (Mac) 或 Ctrl (Windows)，且在预览模式
+      if ((e.metaKey || e.ctrlKey) && activeTab === 'preview') {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -10 : 10;
+        setZoomLevel(prev => Math.min(200, Math.max(50, prev + delta)));
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, [activeTab]);
 
   // 加载记录名称（标准名称字段）
   useEffect(() => {
@@ -453,7 +497,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     }
   };
 
-  // 处理关联表字段变更（产品标准明细表等）
+  // 处理关联表字段变更（产品标准明细表、标准变更记录表等）
   const handleLinkedFieldChange = async (linkedTable: any, recordId: string, fieldId: string, newValue: any, oldValue: any) => {
     if (!linkedTable) {
       console.warn('[TemplatePage] linkedTable is null');
@@ -471,19 +515,45 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
         return;
       }
 
+      // 统一转换为字符串进行比较
+      const oldStr = String(oldValue ?? '').trim();
+      const newStr = String(newValue ?? '').trim();
+      const hasChanged = oldStr !== newStr;
+
       console.log('[TemplatePage] 更新关联表字段:', { 
         tableId: linkedTable.id, 
         recordId, 
         fieldId, 
         fieldName: field.name,
         newValue, 
-        oldValue 
+        oldValue,
+        oldStr,
+        newStr,
+        hasChanged
       });
 
-      // 直接使用 setCellValue 更新关联表
-      await linkedTable.setCellValue(fieldId, recordId, newValue);
+      // 只有真正变化时才更新
+      if (hasChanged) {
+        // 直接使用 setCellValue 更新关联表
+        await linkedTable.setCellValue(fieldId, recordId, newValue);
+        
+        console.log('[TemplatePage] 关联表字段更新成功');
+        
+        // 记录到撤销栈（支持关联表字段的撤销/重做）
+        pushAction({
+          fieldId: fieldId,
+          fieldName: field.name,
+          recordId: recordId,
+          oldValue: oldValue,
+          newValue: newValue,
+          linkedTableId: linkedTable.id,
+          isLinkedTable: true
+        });
+      }
       
-      console.log('[TemplatePage] 关联表字段更新成功');
+      // 无论是否变化都刷新画布显示（确保 UI 同步）
+      setRefreshKey(prev => prev + 1);
+      
       // Toast 已经在 LoopTableRenderer 中显示，这里不重复
     } catch (error: any) {
       console.error('[TemplatePage] 更新关联表字段失败:', error);
@@ -496,33 +566,71 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       {/* 顶部导航栏 */}
       <div className="template-page-header">
         <div className="header-left">
-          <Button onClick={onBack} type="tertiary">
-            ← 返回
+          <Button 
+            onClick={onBack} 
+            type="tertiary"
+            icon={<IconArrowLeft />}
+            className="back-button"
+          >
+            返回
           </Button>
-          <Title heading={4} style={{ margin: '0 0 0 16px' }}>
+          <Title heading={4} className="record-title">
             {recordName}
           </Title>
         </div>
         <div className="header-right">
           {activeTab === 'preview' && (
-            <div className="undo-redo-buttons">
-              <Tooltip content="撤销 (Ctrl+Z)">
-                <Button
-                  icon={<IconUndo />}
-                  type="tertiary"
-                  disabled={!canUndo}
-                  onClick={() => undo()}
+            <>
+              {/* 缩放控件 */}
+              <div className="zoom-controls">
+                <span className="zoom-label">缩放</span>
+                <Slider
+                  value={zoomLevel}
+                  onChange={(value) => setZoomLevel(value as number)}
+                  min={50}
+                  max={200}
+                  step={10}
+                  style={{ width: 100 }}
                 />
-              </Tooltip>
-              <Tooltip content="重做 (Ctrl+Shift+Z)">
+                <span className="zoom-value">{zoomLevel}%</span>
                 <Button
-                  icon={<IconRedo />}
+                  size="small"
                   type="tertiary"
-                  disabled={!canRedo}
-                  onClick={() => redo()}
-                />
-              </Tooltip>
-            </div>
+                  onClick={() => setZoomLevel(100)}
+                  style={{ marginLeft: 4 }}
+                >
+                  重置
+                </Button>
+              </div>
+              <div className="undo-redo-buttons">
+                <Tooltip content="刷新画布">
+                  <Button
+                    icon={<IconRefresh />}
+                    type="tertiary"
+                    onClick={() => {
+                      setRefreshKey(prev => prev + 1);
+                      Toast.info('画布已刷新');
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip content="撤销 (Ctrl+Z)">
+                  <Button
+                    icon={<IconUndo />}
+                    type="tertiary"
+                    disabled={!canUndo}
+                    onClick={() => undo()}
+                  />
+                </Tooltip>
+                <Tooltip content="重做 (Ctrl+Shift+Z)">
+                  <Button
+                    icon={<IconRedo />}
+                    type="tertiary"
+                    disabled={!canRedo}
+                    onClick={() => redo()}
+                  />
+                </Tooltip>
+              </div>
+            </>
           )}
           <Tabs
             activeKey={activeTab}
@@ -659,10 +767,11 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
               onFieldChange={handleFieldChange}
               onLinkedFieldChange={handleLinkedFieldChange}
               refreshKey={refreshKey}
+              zoomLevel={zoomLevel}
             />
           ) : (
             <div className="template-empty">
-              <Text type="tertiary">请选择一个模板或创建新模板</Text>
+              <Text type="tertiary">模板加载中，请稍后...</Text>
             </div>
           )}
         </Content>

@@ -601,7 +601,7 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
   const totalWidth = columns.reduce((sum: number, col: any) => sum + (col.width || 100), 0);
 
   return (
-    <div className="template-element template-table" style={{ width: totalWidth }}>
+    <div className="template-element template-table">
       <Table
         columns={tableColumns}
         dataSource={tableData}
@@ -609,7 +609,7 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
         size="small"
         bordered={config.bordered !== false}
         showHeader={showHeader}
-        style={{ width: totalWidth }}
+        style={{ width: '100%' }}
       />
     </div>
   );

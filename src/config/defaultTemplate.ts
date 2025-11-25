@@ -68,7 +68,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 260 },
       config: {
         content: '1 产品描述',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold'
       }
     },
@@ -80,7 +80,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 300 },
       config: {
         columns: [
-          { id: 'col1', label: '项目', width: 200 },
+          { id: 'col1', label: '项目', width: 210 },
           { id: 'col2', label: '内容', width: 500 }
         ],
         rows: [
@@ -162,7 +162,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 650 },
       config: {
         content: '2 产品标准',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold'
       }
     },
@@ -174,7 +174,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 690 },
       config: {
         content: '2.1 感官要求',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -198,12 +198,12 @@ export const DEFAULT_TEMPLATE: Template = {
             position: { x: 0, y: 0 },
       config: {
         columns: [
-                { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
-                { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
-                { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
-                { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
-                { id: 'col6', label: '型式检验', width: 100, fieldId: 'fldciyYFzH' }
+                { id: 'col1', label: '项目', width: 110 },
+                { id: 'col2', label: '要求', fieldId: 'fldpfUrXpj' },
+                { id: 'col3', label: '检测方法', fieldId: 'fldeffP9dE' },
+                { id: 'col4', label: '入厂检验', width: 70, fieldId: 'fldk55W8YR' },
+                { id: 'col5', label: 'COA项目', width: 70, fieldId: 'fldzUl19XS' },
+                { id: 'col6', label: '型式检验', width: 70, fieldId: 'fldciyYFzH' }
               ],
               rows: [],
               dataSource: 'loop',
@@ -230,7 +230,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 900 },
       config: {
         content: '2.2 理化指标要求',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -254,12 +254,12 @@ export const DEFAULT_TEMPLATE: Template = {
             position: { x: 0, y: 0 },
       config: {
         columns: [
-                { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
-                { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
-                { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
-                { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
-                { id: 'col6', label: '型式检验', width: 100, fieldId: 'fldciyYFzH' }
+                { id: 'col1', label: '项目', width: 110 },
+                { id: 'col2', label: '要求', fieldId: 'fldpfUrXpj' },
+                { id: 'col3', label: '检测方法', fieldId: 'fldeffP9dE' },
+                { id: 'col4', label: '入厂检验', width: 70, fieldId: 'fldk55W8YR' },
+                { id: 'col5', label: 'COA项目', width: 70, fieldId: 'fldzUl19XS' },
+                { id: 'col6', label: '型式检验', width: 70, fieldId: 'fldciyYFzH' }
               ],
               rows: [],
               dataSource: 'loop',
@@ -286,7 +286,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 1100 },
       config: {
         content: '2.3 微生物要求',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -310,12 +310,12 @@ export const DEFAULT_TEMPLATE: Template = {
             position: { x: 0, y: 0 },
       config: {
         columns: [
-                { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
-                { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
-                { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
-                { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
-                { id: 'col6', label: '型式检验', width: 100, fieldId: 'fldciyYFzH' }
+                { id: 'col1', label: '项目', width: 110 },
+                { id: 'col2', label: '要求', fieldId: 'fldpfUrXpj' },
+                { id: 'col3', label: '检测方法', fieldId: 'fldeffP9dE' },
+                { id: 'col4', label: '入厂检验', width: 70, fieldId: 'fldk55W8YR' },
+                { id: 'col5', label: 'COA项目', width: 70, fieldId: 'fldzUl19XS' },
+                { id: 'col6', label: '型式检验', width: 70, fieldId: 'fldciyYFzH' }
               ],
               rows: [],
               dataSource: 'loop',
@@ -342,7 +342,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 1300 },
       config: {
         content: '2.4 污染物要求',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -366,12 +366,12 @@ export const DEFAULT_TEMPLATE: Template = {
             position: { x: 0, y: 0 },
       config: {
         columns: [
-                { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
-                { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
-                { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
-                { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
-                { id: 'col6', label: '型式检验', width: 100, fieldId: 'fldciyYFzH' }
+                { id: 'col1', label: '项目', width: 110 },
+                { id: 'col2', label: '要求', fieldId: 'fldpfUrXpj' },
+                { id: 'col3', label: '检测方法', fieldId: 'fldeffP9dE' },
+                { id: 'col4', label: '入厂检验', width: 70, fieldId: 'fldk55W8YR' },
+                { id: 'col5', label: 'COA项目', width: 70, fieldId: 'fldzUl19XS' },
+                { id: 'col6', label: '型式检验', width: 70, fieldId: 'fldciyYFzH' }
               ],
               rows: [],
               dataSource: 'loop',
@@ -398,7 +398,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 1500 },
       config: {
         content: '2.5 食品添加剂要求',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -422,12 +422,12 @@ export const DEFAULT_TEMPLATE: Template = {
             position: { x: 0, y: 0 },
       config: {
         columns: [
-                { id: 'col1', label: '项目', width: 150 },
-                { id: 'col2', label: '要求', width: 200, fieldId: 'fldpfUrXpj' },
-                { id: 'col3', label: '检测方法', width: 250, fieldId: 'fldeffP9dE' },
-                { id: 'col4', label: '入厂检验', width: 100, fieldId: 'fldk55W8YR' },
-                { id: 'col5', label: 'COA项目', width: 100, fieldId: 'fldzUl19XS' },
-                { id: 'col6', label: '型式检验', width: 100, fieldId: 'fldciyYFzH' }
+                { id: 'col1', label: '项目', width: 110 },
+                { id: 'col2', label: '要求', fieldId: 'fldpfUrXpj' },
+                { id: 'col3', label: '检测方法', fieldId: 'fldeffP9dE' },
+                { id: 'col4', label: '入厂检验', width: 70, fieldId: 'fldk55W8YR' },
+                { id: 'col5', label: 'COA项目', width: 70, fieldId: 'fldzUl19XS' },
+                { id: 'col6', label: '型式检验', width: 70, fieldId: 'fldciyYFzH' }
               ],
               rows: [],
               dataSource: 'loop',
@@ -454,7 +454,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 1700 },
       config: {
         content: '2.6 致敏物质信息',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -476,7 +476,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 1800 },
       config: {
         content: '3 其他要求',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold'
       }
     },
@@ -555,7 +555,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 2100 },
       config: {
         content: '附表一：标准变更记录',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },
@@ -574,12 +574,12 @@ export const DEFAULT_TEMPLATE: Template = {
             position: { x: 0, y: 0 },
             config: {
               columns: [
-                { id: 'col1', label: '序号', width: 60, fieldId: 'fldpBu4ESO' },
-                { id: 'col2', label: '替代版本号', width: 110, fieldId: 'fldNmCZ5RT' },
-                { id: 'col3', label: '变更日期', width: 120, fieldId: 'fld2Rz5f7b', format: 'date' },
-                { id: 'col4', label: '变更内容', width: 200, fieldId: 'fldTvZwqB2' },
-                { id: 'col5', label: '变更原因', width: 150, fieldId: 'fldeDy48rL' },
-                { id: 'col6', label: '修订人', width: 80, fieldId: 'fldTtVRn5i' }
+                { id: 'col1', label: '序号', width: 45, fieldId: 'fldpBu4ESO' },
+                { id: 'col2', label: '替代版本号', width: 80, fieldId: 'fldNmCZ5RT' },
+                { id: 'col3', label: '变更日期', width: 100, fieldId: 'fld2Rz5f7b', format: 'date' },
+                { id: 'col4', label: '变更内容', fieldId: 'fldTvZwqB2' },
+                { id: 'col5', label: '变更原因', fieldId: 'fldeDy48rL' },
+                { id: 'col6', label: '修订人', width: 60, fieldId: 'fldTtVRn5i' }
               ],
               rows: [],
               dataSource: 'loop',
@@ -599,7 +599,7 @@ export const DEFAULT_TEMPLATE: Template = {
       position: { x: 40, y: 2350 },
       config: {
         content: '附表二：检测方法',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold'
       }
     },

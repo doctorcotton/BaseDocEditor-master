@@ -31,11 +31,20 @@ const CHECKBOX_FIELD_IDS = new Set([
  * 只有这些字段可以在表格中双击编辑
  */
 const EDITABLE_FIELD_IDS = new Set([
+  // === 产品标准明细表字段 ===
   'fldpfUrXpj', // 要求（文本）
   'fldeffP9dE', // 检测方法（单选）
   'fldk55W8YR', // 入厂检验（勾选）
   'fldzUl19XS', // COA项目（勾选）
-  'fldciyYFzH'  // 型式检验（勾选）
+  'fldciyYFzH', // 型式检验（勾选）
+  
+  // === 标准变更记录表字段 ===
+  'fldpBu4ESO', // 序号（文本/数字）
+  'fldNmCZ5RT', // 替代版本号（文本）
+  'fld2Rz5f7b', // 变更日期（日期）
+  'fldTvZwqB2', // 变更内容（文本）
+  'fldeDy48rL', // 变更原因（文本）
+  'fldTtVRn5i'  // 修订人（文本）
 ]);
 
 /**
@@ -553,14 +562,25 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
       hasChanged = oldId !== newId;
       newValueToSave = editingValue;
     } else {
-      // 文本字段：比较字符串
-      const oldText = extractTextFromValue(oldValue);
+      // 文本字段：比较字符串（统一转换为字符串比较）
+      const oldText = String(extractTextFromValue(oldValue) || '').trim();
       const newText = String(editingValue || '').trim();
-      hasChanged = oldText.trim() !== newText;
+      hasChanged = oldText !== newText;
       newValueToSave = newText;
+      
+      console.log('[LoopTableRenderer] 文本比较:', { 
+        fieldId, 
+        oldText, 
+        newText, 
+        hasChanged,
+        oldValue,
+        editingValue 
+      });
     }
 
-    if (hasChanged && onFieldChange) {
+    // 无论是否变化都调用 onFieldChange（让上层决定是否真正保存）
+    // 这样可以确保画布刷新
+    if (onFieldChange) {
       setSaving(true);
       try {
         // 调用回调保存到多维表格
@@ -575,7 +595,9 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
           return newMap;
         });
         
-        Toast.success(`已更新`);
+        if (hasChanged) {
+          Toast.success(`已更新`);
+        }
       } catch (error: any) {
         console.error('[LoopTableRenderer] 保存失败:', error);
         Toast.error(`保存失败: ${error.message || '未知错误'}`);
@@ -716,33 +738,26 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
     );
   };
 
-  // 固定列宽配置（总宽度 700px，与其他表格对齐）
-  // 110 + 110 + 270 + 70 + 70 + 70 = 700
-  const FIXED_COLUMN_WIDTHS: Record<string, number> = {
-    col1: 110,  // 项目
-    col2: 110,  // 要求
-    col3: 270,  // 检测方法
-    col4: 70,   // 入厂检验
-    col5: 70,   // COA项目
-    col6: 70,   // 型式检验
-  };
-
   // 构建表格列定义
   const tableColumns = columns.map((col: any) => {
     // 检查是否为勾选字段列
     const isCheckboxColumn = col.fieldId && isCheckboxField(col.fieldId);
     const isEditable = col.fieldId && isEditableField(col.fieldId);
     
-    // 使用固定列宽
-    const columnWidth = FIXED_COLUMN_WIDTHS[col.id] || col.width;
+    // 勾选列使用固定窄宽度（比表头多一个字符），其他列使用配置宽度或自动
+    let columnWidth = col.width;
+    if (isCheckboxColumn) {
+      // 勾选列：表头4个字（入厂检验/COA项目/型式检验）约64px，加一个字符约80px
+      columnWidth = 80;
+    }
     
     return {
-    title: col.label,
-    dataIndex: col.id,
-    key: col.id,
+      title: col.label,
+      dataIndex: col.id,
+      key: col.id,
       width: columnWidth,
-      // 勾选列居中显示
-      align: isCheckboxColumn ? 'center' as const : (col.align || 'left'),
+      // 勾选列居中显示，其他列默认居中（表头已统一居中）
+      align: 'center' as const,
       // 自定义渲染
       render: (text: any, rowData: any) => {
         const recordId = rowData.key;
@@ -851,11 +866,8 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
 
   const showHeader = config.showHeader !== false;
 
-  // 计算表格总宽度
-  const totalWidth = Object.values(FIXED_COLUMN_WIDTHS).reduce((sum, w) => sum + w, 0);
-
   return (
-    <div className="template-element template-table" style={{ width: totalWidth }}>
+    <div className="template-element template-table">
       <Table
         columns={tableColumns}
         dataSource={tableData}
@@ -863,7 +875,7 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
         size="small"
         bordered={config.bordered !== false}
         showHeader={showHeader}
-        style={{ width: totalWidth }}
+        style={{ width: '100%' }}
       />
     </div>
   );

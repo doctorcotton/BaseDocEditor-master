@@ -1,5 +1,10 @@
 /* 模板渲染器样式 */
 
+:root {
+  --page-margin-vertical: 17mm;
+  --page-margin-horizontal: 12mm;
+}
+
 .template-renderer-wrapper {
   width: 100%;
   display: flex;
@@ -14,14 +19,17 @@
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
-  padding: 40px;
+  padding: var(--page-margin-vertical) var(--page-margin-horizontal);
   min-width: 794px; /* A4 宽度 */
+  box-sizing: border-box;
+  transition: transform 0.15s ease-out;
 }
 
 .template-content-flow {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
 .template-empty {
@@ -30,18 +38,31 @@
   justify-content: center;
   min-height: 400px;
   color: var(--semi-color-text-2);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* 元素样式 */
 .template-element {
-  padding: 12px;
+  padding: 8px 12px;
   border-radius: 4px;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .template-element:hover {
   background: var(--semi-color-fill-0);
+}
+
+/* 表格元素和循环元素不需要内边距，避免挤压表格宽度 */
+.template-element.template-table,
+.template-element.template-loop {
+  padding: 0;
+  margin: 0;
+}
+
+.template-element.template-table:hover,
+.template-element.template-loop:hover {
+  background: transparent;
 }
 
 /* 文本元素 */
@@ -123,7 +144,7 @@
 
 .field-error {
   color: var(--semi-color-danger);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .field-comment-badge {
@@ -134,7 +155,7 @@
   color: #fff;
   border-radius: 10px;
   padding: 2px 6px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   z-index: 10;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -147,18 +168,28 @@
 /* 循环区域 */
 .template-loop {
   position: relative;
+  padding: 0;
+  margin: 0;
+}
+
+/* 循环区域内的表格不需要额外边距 */
+.template-loop > .template-table,
+.template-loop .template-table {
+  margin: 0;
+  padding: 0;
 }
 
 .loop-area {
-  padding: 16px;
-  border: 1px dashed var(--semi-color-border);
-  border-radius: 4px;
-  margin-bottom: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
 }
 
 .loop-area.loading {
   text-align: center;
   color: var(--semi-color-text-2);
+  padding: 16px;
 }
 
 .loop-area.empty,
@@ -170,10 +201,10 @@
 }
 
 .loop-item {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: var(--semi-color-fill-0);
-  border-radius: 4px;
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .loop-item:last-child {
@@ -182,7 +213,36 @@
 
 /* 表格 */
 .template-table {
-  min-width: 300px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* 强制 Semi Table 禁用所有滚动条 */
+.template-table .semi-table-container {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
+
+.template-table .semi-table {
+  width: 100% !important;
+  max-width: 100%;
+  table-layout: fixed !important;
+}
+
+.template-table .semi-table-body {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
+
+.template-table .semi-table-body-outer {
+  overflow: visible !important;
+}
+
+.template-table .semi-table-body-inner {
+  overflow: visible !important;
 }
 
 .table-empty {
@@ -200,7 +260,7 @@
 
 .table-cell-comment-badge {
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -211,11 +271,11 @@
 
 /* 表格单元格编辑 */
 .table-cell-field {
-  min-height: 24px;
-  padding: 4px 0;
+  min-height: 20px;
+  padding: 2px 0;
   white-space: pre-wrap;
   word-wrap: break-word;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .table-cell-editable {
@@ -284,7 +344,7 @@
   height: 100%;
   min-height: 100px;
   color: var(--semi-color-text-2);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* 链接 */
@@ -327,9 +387,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--semi-color-border, #d9d9d9);
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--semi-color-border, #d9d9d9);
   border-radius: 3px;
   background-color: #fff;
   transition: all 0.2s ease;
@@ -337,8 +397,8 @@
 }
 
 .loop-table-checkbox.checked {
-  background-color: var(--semi-color-primary, #0077fa);
-  border-color: var(--semi-color-primary, #0077fa);
+  background-color: #4a90d9;
+  border-color: #4a90d9;
 }
 
 .loop-table-checkbox.clickable {
@@ -346,22 +406,22 @@
 }
 
 .loop-table-checkbox.clickable:hover {
-  border-color: var(--semi-color-primary, #0077fa);
-  box-shadow: 0 0 0 2px rgba(0, 119, 250, 0.2);
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
 }
 
 .loop-table-checkbox .checkmark {
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   line-height: 1;
 }
 
 /* 循环表格可编辑单元格样式 */
 .loop-table-cell-editable {
-  min-height: 24px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  min-height: 18px;
+  padding: 0;
+  border-radius: 2px;
   cursor: pointer;
   transition: background-color 0.2s;
   word-wrap: break-word;
@@ -405,7 +465,7 @@
 }
 
 .loop-table-select-editing .semi-select .semi-select-selection-text {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--semi-color-text-0, #1c1f23);
 }
 
@@ -417,22 +477,40 @@
 
 .loop-table-select-editing .semi-select-option {
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* 所有表格禁用横向滚动，使用固定布局 */
-.template-table .semi-table-container {
-  overflow-x: visible !important;
+/* 所有表格禁用横向滚动（补充覆盖） */
+.template-table .semi-table-wrapper {
+  overflow: visible !important;
 }
 
-.template-table .semi-table {
-  table-layout: fixed !important;
+/* 所有表格表头：不换行、居中 */
+.template-table .semi-table-thead th {
+  white-space: nowrap !important;
+  text-align: center !important;
+  font-size: 13px;
+  padding: 6px 8px !important;
 }
 
-/* 表头不换行 */
-.template-loop .template-table .semi-table-thead th {
-  white-space: nowrap;
-  text-align: center;
+/* 所有表格表头内容居中 */
+.template-table .semi-table-thead th .semi-table-column-title {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/* 第一列（项目列）靠左对齐 */
+.template-table .semi-table-thead th:first-child {
+  text-align: left !important;
+}
+
+.template-table .semi-table-thead th:first-child .semi-table-column-title {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+.template-table .semi-table-tbody td:first-child {
+  text-align: left !important;
 }
 
 /* 表格内容可换行 */
@@ -440,4 +518,6 @@
   word-wrap: break-word;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  font-size: 13px;
+  padding: 6px 8px !important;
 }

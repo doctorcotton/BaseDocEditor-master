@@ -12,6 +12,9 @@ export interface UndoableAction {
   oldValue: any;
   newValue: any;
   timestamp: number;
+  // 关联表信息（用于关联表字段的撤销/重做）
+  linkedTableId?: string;
+  isLinkedTable?: boolean;
 }
 
 interface UseUndoRedoOptions {
