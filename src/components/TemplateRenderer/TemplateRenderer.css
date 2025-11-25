@@ -100,6 +100,22 @@
   color: var(--semi-color-text-0);
 }
 
+/* 字段值中的链接样式 */
+.field-value-link {
+  color: var(--semi-color-link);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.field-value-link:hover {
+  color: var(--semi-color-link-hover);
+}
+
+.field-value-link:visited {
+  color: var(--semi-color-link-visited, #7c3aed);
+}
+
 .field-empty {
   color: var(--semi-color-text-2);
   font-style: italic;
@@ -224,6 +240,29 @@
 .table-cell-empty {
   color: var(--semi-color-text-2);
   font-style: italic;
+}
+
+/* 表格单元格标签前缀 */
+.table-cell-label-prefix {
+  font-weight: 500;
+  color: var(--semi-color-text-1);
+}
+
+/* 表格单元格链接样式 */
+.table-cell-link {
+  color: var(--semi-color-link);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.table-cell-link:hover {
+  color: var(--semi-color-link-hover);
+  text-decoration: underline;
+}
+
+.table-cell-link:visited {
+  color: var(--semi-color-link-visited, #7c3aed);
 }
 
 /* 图片 */

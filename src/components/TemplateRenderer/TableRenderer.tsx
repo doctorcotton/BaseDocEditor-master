@@ -19,6 +19,7 @@ interface TableRendererProps {
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
   onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
+  refreshKey?: number; // 用于触发数据刷新
 }
 
 /**
@@ -45,6 +46,138 @@ function isFieldInWhitelist(fieldId: string): boolean {
 }
 
 /**
+ * 检查文本值中是否包含超链接
+ * 飞书文本字段中的超链接格式可能有多种：
+ * 1. [{type: 'url', text: '链接文字', link: 'https://...'}]
+ * 2. [{type: 'text', text: '普通文字'}, {type: 'url', text: '链接', link: '...'}]
+ * 3. 直接包含 http:// 或 https:// 的字符串
+ */
+function hasRichTextLinks(value: any): boolean {
+  if (!value) return false;
+  // 检查字符串中是否包含 URL
+  if (typeof value === 'string') {
+    return /https?:\/\/[^\s]+/.test(value);
+  }
+  if (!Array.isArray(value)) return false;
+  return value.some(v => {
+    if (!v) return false;
+    // 对象格式的超链接
+    if (typeof v === 'object' && v.type === 'url' && v.link) return true;
+    // 检查对象中是否有 link 属性
+    if (typeof v === 'object' && v.link) return true;
+    // 检查文本内容中是否包含 URL
+    if (typeof v === 'string' && /https?:\/\/[^\s]+/.test(v)) return true;
+    if (typeof v === 'object' && v.text && /https?:\/\/[^\s]+/.test(v.text)) return true;
+    return false;
+  });
+}
+
+/**
+ * 将文本中的 URL 转换为可点击链接
+ */
+function renderTextWithLinks(text: string): React.ReactNode {
+  if (!text) return '';
+  
+  // 匹配 URL 的正则表达式
+  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g;
+  const parts = text.split(urlRegex);
+  
+  if (parts.length === 1) {
+    return text; // 没有 URL，直接返回文本
+  }
+  
+  return parts.map((part, index) => {
+    if (/(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="table-cell-link"
+          onClick={(e) => e.stopPropagation()}
+          title={part}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
+/**
+ * 渲染富文本内容（支持超链接）
+ */
+function renderRichText(value: any): React.ReactNode {
+  if (!value) return '';
+  
+  // 如果是字符串，检查是否包含 URL 并渲染
+  if (typeof value === 'string') {
+    return renderTextWithLinks(value);
+  }
+  
+  if (!Array.isArray(value)) {
+    return String(value || '');
+  }
+  
+  return value.map((item, index) => {
+    if (!item) return null;
+    
+    // 字符串类型：检查是否包含 URL
+    if (typeof item === 'string') {
+      return <span key={index}>{renderTextWithLinks(item)}</span>;
+    }
+    
+    if (typeof item !== 'object') {
+      return <span key={index}>{String(item || '')}</span>;
+    }
+    
+    // 超链接类型（type: 'url'）
+    if (item.type === 'url' && item.link) {
+      return (
+        <a
+          key={index}
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="table-cell-link"
+          onClick={(e) => e.stopPropagation()}
+          title={item.link}
+        >
+          {item.text || item.link}
+        </a>
+      );
+    }
+    
+    // 对象中直接包含 link 属性
+    if (item.link) {
+      return (
+        <a
+          key={index}
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="table-cell-link"
+          onClick={(e) => e.stopPropagation()}
+          title={item.link}
+        >
+          {item.text || item.name || item.link}
+        </a>
+      );
+    }
+    
+    // 普通文本对象：检查文本内容是否包含 URL
+    const textContent = item.text || item.name || item.value || '';
+    if (textContent && /https?:\/\/[^\s]+/.test(textContent)) {
+      return <span key={index}>{renderTextWithLinks(textContent)}</span>;
+    }
+    
+    return <span key={index}>{textContent}</span>;
+  });
+}
+
+/**
  * 从复杂值中提取可编辑的文本
  */
 function extractEditableText(value: any, fieldType: FieldType): string {
@@ -52,8 +185,26 @@ function extractEditableText(value: any, fieldType: FieldType): string {
     return '';
   }
   
-  // 对于文本类型，如果是数组，提取文本内容
-  if (fieldType === FieldType.Text || fieldType === FieldType.Url || 
+  // URL 字段特殊处理：优先显示文档名称
+  if (fieldType === FieldType.Url) {
+    if (Array.isArray(value)) {
+      return value.map(v => {
+        if (typeof v === 'object' && v !== null) {
+          // 优先使用 text（飞书文档名称），其次使用 link
+          return v.text || v.name || v.link || v.url || '';
+        }
+        return String(v || '');
+      }).join('');
+    }
+    if (typeof value === 'object' && value !== null) {
+      // 优先使用 text（飞书文档名称），其次使用 link
+      return value.text || value.name || value.link || value.url || '';
+    }
+    return String(value || '');
+  }
+  
+  // 对于其他文本类型，如果是数组，提取文本内容
+  if (fieldType === FieldType.Text || 
       fieldType === FieldType.Email || fieldType === FieldType.Phone ||
       fieldType === FieldType.Barcode) {
     if (Array.isArray(value)) {
@@ -117,7 +268,8 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
   table,
   onComment,
   commentStats,
-  onFieldChange
+  onFieldChange,
+  refreshKey = 0
 }) => {
   const config = element.config as any;
   const columns = config.columns || [];
@@ -190,13 +342,12 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
     };
 
     loadFieldValues();
-  }, [table, record?.recordId, rows, dataSource, fields]);
+  }, [table, record?.recordId, rows, dataSource, fields, refreshKey]);
 
   // 保存并退出编辑
   const handleSaveAndExit = useCallback(() => {
     if (editingCell && onFieldChange && editingValue !== null) {
-      const oldValue = rawValues.get(editingCell.fieldId) ?? record.fields?.[editingCell.fieldId];
-      // 获取初始显示文本（编辑开始时的值）
+      // 获取初始显示文本（编辑开始时的值）- 用于撤销时恢复
       const oldDisplayText = displayValues.get(editingCell.fieldId) || '';
       
       // 比较显示文本，只有真正改变时才调用变更回调
@@ -210,8 +361,8 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
           newValue: editingValue 
         });
         
-        // 调用变更回调
-        onFieldChange(editingCell.fieldId, editingValue, oldValue);
+        // 调用变更回调 - 注意：oldValue 也使用显示文本，这样撤销时可以正确恢复
+        onFieldChange(editingCell.fieldId, editingValue, oldDisplayText);
         
         // 更新本地显示值
         setDisplayValues(prev => {
@@ -257,6 +408,35 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
     }
   };
 
+  // 从原始值中提取 URL 链接
+  const extractUrlFromValue = (value: any): string | null => {
+    if (!value) return null;
+    
+    // 数组格式
+    if (Array.isArray(value)) {
+      const firstItem = value[0];
+      if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
+        return firstItem;
+      }
+      if (firstItem && typeof firstItem === 'object') {
+        return firstItem.link || firstItem.url || null;
+      }
+      return null;
+    }
+    
+    // 字符串格式
+    if (typeof value === 'string' && value.startsWith('http')) {
+      return value;
+    }
+    
+    // 对象格式
+    if (typeof value === 'object') {
+      return value.link || value.url || null;
+    }
+    
+    return null;
+  };
+
   // 渲染单元格内容
   const renderCellContent = (
     cell: TableCell, 
@@ -280,10 +460,18 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
       
       // 使用已格式化的显示值
       const displayText = displayValues.get(cell.fieldId) || '';
+      // 获取标签前缀
+      const labelPrefix = cell.labelPrefix || '';
+      
+      // 检查是否是 URL 字段，提取链接
+      const rawValue = rawValues.get(cell.fieldId);
+      const isUrlField = field.type === FieldType.Url;
+      const urlLink = isUrlField ? extractUrlFromValue(rawValue) : null;
       
       if (isEditing) {
         return (
           <div ref={editingCellRef} className="table-cell-editing">
+            {labelPrefix && <span className="table-cell-label-prefix">{labelPrefix}</span>}
             <FieldEditor
               type={field.type}
               value={editingValue}
@@ -291,6 +479,42 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
               onBlur={handleSaveAndExit}
               fieldMeta={field}
             />
+          </div>
+        );
+      }
+      
+      // URL 字段渲染为可点击链接
+      if (isUrlField && urlLink && displayText) {
+        return (
+          <div 
+            className="table-cell-field"
+            title={urlLink}
+          >
+            {labelPrefix && <span className="table-cell-label-prefix">{labelPrefix}</span>}
+            <a 
+              href={urlLink} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="table-cell-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {displayText}
+            </a>
+          </div>
+        );
+      }
+      
+      // 检查文本字段中是否包含富文本超链接
+      const hasLinks = hasRichTextLinks(rawValue);
+      
+      // 如果文本中包含超链接，使用富文本渲染
+      if (hasLinks) {
+        return (
+          <div 
+            className="table-cell-field"
+          >
+            {labelPrefix && <span className="table-cell-label-prefix">{labelPrefix}</span>}
+            {renderRichText(rawValue)}
           </div>
         );
       }
@@ -309,6 +533,7 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
           }}
           title={editable ? '双击编辑' : '系统关联字段，不可编辑'}
         >
+          {labelPrefix && <span className="table-cell-label-prefix">{labelPrefix}</span>}
           {displayText || <span className="table-cell-empty">空</span>}
         </div>
       );

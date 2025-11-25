@@ -146,51 +146,118 @@ export async function getLinkedRecords(
   linkFieldId: string
 ): Promise<IRecord[]> {
   try {
-    // 获取关联字段的值（可能是记录ID数组）
+    console.log('[getLinkedRecords] 开始获取关联记录', { recordId, linkFieldId });
+    
+    // 获取关联字段的值
     const linkValue = await table.getCellValue(linkFieldId, recordId);
+    console.log('[getLinkedRecords] 关联字段值:', linkValue);
     
     if (!linkValue) {
+      console.log('[getLinkedRecords] 关联字段值为空');
       return [];
     }
     
-    // 如果是数组，获取所有关联记录
-    if (Array.isArray(linkValue)) {
-      const recordIds = linkValue.map((item: any) => 
-        typeof item === 'string' ? item : item.recordId || item.id
-      );
-      
-      if (recordIds.length === 0) {
-        return [];
-      }
-      
-      // 批量获取记录
-      const linkedTable = await getLinkedTable(table, linkFieldId);
-      if (!linkedTable) {
-        return [];
-      }
-      
-      const records = await linkedTable.getRecordsByIds(recordIds);
-      return records.map((recordValue: any, index: number) => ({
-        recordId: recordIds[index],
-        fields: recordValue
-      }));
-    }
-    
-    // 单个关联记录
+    // 获取关联表
     const linkedTable = await getLinkedTable(table, linkFieldId);
     if (!linkedTable) {
+      console.error('[getLinkedRecords] 无法获取关联表');
       return [];
     }
     
-    const linkedRecordId = typeof linkValue === 'string' ? linkValue : linkValue.recordId || linkValue.id;
-    const recordValue = await linkedTable.getRecordById(linkedRecordId);
+    // 解析记录ID列表
+    // 飞书关联字段可能返回多种格式:
+    // 1. { recordIds: [...], tableId: '...' } - 新格式
+    // 2. { record_ids: [...], table_id: '...' } - 另一种格式
+    // 3. [{ record_id: 'xxx', text: 'xxx' }, ...] - 数组格式
+    // 4. 'recordId' - 单个字符串
+    let recordIds: string[] = [];
     
-    return [{
-      recordId: linkedRecordId,
-      fields: recordValue
-    }];
+    if (typeof linkValue === 'string') {
+      // 单个记录ID字符串
+      recordIds = [linkValue];
+    } else if (Array.isArray(linkValue)) {
+      // 数组格式
+      recordIds = linkValue.map((item: any) => {
+        if (typeof item === 'string') return item;
+        return item.record_id || item.recordId || item.id;
+      }).filter(Boolean);
+    } else if (typeof linkValue === 'object') {
+      // 对象格式 { recordIds: [...] } 或 { record_ids: [...] }
+      const ids = linkValue.recordIds || linkValue.record_ids;
+      if (Array.isArray(ids)) {
+        recordIds = ids.filter(Boolean);
+      } else if (linkValue.record_id || linkValue.recordId || linkValue.id) {
+        // 单个对象 { record_id: 'xxx' }
+        recordIds = [linkValue.record_id || linkValue.recordId || linkValue.id];
+      }
+    }
+    
+    console.log('[getLinkedRecords] 解析到的记录ID列表:', recordIds);
+    
+    if (recordIds.length === 0) {
+      console.log('[getLinkedRecords] 没有解析到有效的记录ID');
+      return [];
+    }
+    
+    // 批量获取记录 - 使用 getRecordShareLink 或逐个获取字段值
+    const result: IRecord[] = [];
+    
+    // 获取关联表的所有字段
+    const linkedFields = await linkedTable.getFieldMetaList();
+    const fieldIds = linkedFields.map((f: IFieldMeta) => f.id);
+    console.log('[getLinkedRecords] 关联表字段数:', fieldIds.length);
+    
+    for (const rid of recordIds) {
+      try {
+        // 方法1: 尝试使用 getRecordById
+        let recordData = await linkedTable.getRecordById(rid);
+        console.log('[getLinkedRecords] getRecordById 返回:', { rid, type: typeof recordData, keys: recordData ? Object.keys(recordData).slice(0, 5) : [] });
+        
+        // 如果返回的是空对象或字段值都是 null，尝试逐个获取字段值
+        let fields: Record<string, any> = {};
+        
+        if (recordData && typeof recordData === 'object') {
+          // 检查是否有 fields 属性
+          if (recordData.fields && typeof recordData.fields === 'object') {
+            fields = recordData.fields;
+          } else {
+            // recordData 本身就是 fields
+            fields = recordData;
+          }
+        }
+        
+        // 检查字段值是否都是 null
+        const hasNonNullValue = Object.values(fields).some(v => v !== null && v !== undefined);
+        
+        if (!hasNonNullValue) {
+          console.log('[getLinkedRecords] 字段值都是 null，尝试逐个获取字段值');
+          // 逐个获取字段值
+          for (const fieldId of fieldIds) {
+            try {
+              const cellValue = await linkedTable.getCellValue(fieldId, rid);
+              if (cellValue !== null && cellValue !== undefined) {
+                fields[fieldId] = cellValue;
+              }
+            } catch (e) {
+              // 忽略单个字段获取失败
+            }
+          }
+          console.log('[getLinkedRecords] 逐个获取后的字段数:', Object.keys(fields).filter(k => fields[k] !== null && fields[k] !== undefined).length);
+        }
+        
+        result.push({
+          recordId: rid,
+          fields: fields
+        });
+      } catch (err) {
+        console.warn('[getLinkedRecords] 获取单条记录失败:', rid, err);
+      }
+    }
+    
+    console.log('[getLinkedRecords] 最终获取到的记录数:', result.length);
+    return result;
   } catch (error) {
-    console.error('获取关联记录失败:', error);
+    console.error('[getLinkedRecords] 获取关联记录失败:', error);
     return [];
   }
 }

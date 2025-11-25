@@ -25,37 +25,37 @@ export const DEFAULT_TEMPLATE: Template = {
       }
     },
 
-    // 表头信息表格（合并为2行3列格式）
+    // 表头信息表格（2行3列格式，字段名：文本）
     {
       id: 'header_table',
       type: 'table',
       position: { x: 40, y: 100 },
       config: {
         columns: [
-          { id: 'col1', label: '标准编号', width: 200 },
-          { id: 'col2', label: '版本号', width: 200 },
-          { id: 'col3', label: '生效日期', width: 200 }
+          { id: 'col1', label: '', width: 200 },
+          { id: 'col2', label: '', width: 200 },
+          { id: 'col3', label: '', width: 200 }
         ],
         rows: [
           {
             id: 'row1',
             cells: [
-              { columnId: 'col1', type: 'field', fieldId: 'flds9HNx8J', fieldPath: '标准编号' },
-              { columnId: 'col2', type: 'field', fieldId: 'fldL7m1ZTN', fieldPath: '版本号' },
-              { columnId: 'col3', type: 'field', fieldId: 'fldvHOFabo', fieldPath: '生效日期' }
+              { columnId: 'col1', type: 'field', fieldId: 'flds9HNx8J', fieldPath: '标准编号', labelPrefix: '标准编号：' },
+              { columnId: 'col2', type: 'field', fieldId: 'fldL7m1ZTN', fieldPath: '版本号', labelPrefix: '版本号：' },
+              { columnId: 'col3', type: 'field', fieldId: 'fldvHOFabo', fieldPath: '生效日期', labelPrefix: '生效日期：' }
             ]
           },
           {
             id: 'row2',
             cells: [
-              { columnId: 'col1', type: 'field', fieldId: 'fldLwa5wPM', fieldPath: '编制人' },
-              { columnId: 'col2', type: 'field', fieldPath: '审核人' },
-              { columnId: 'col3', type: 'field', fieldId: 'fldeb7GDn5', fieldPath: '批准人' }
+              { columnId: 'col1', type: 'field', fieldId: 'fldLwa5wPM', fieldPath: '编制人', labelPrefix: '编制人：' },
+              { columnId: 'col2', type: 'field', fieldPath: '审核人', labelPrefix: '审核人：' },
+              { columnId: 'col3', type: 'field', fieldId: 'fldeb7GDn5', fieldPath: '批准人', labelPrefix: '批准人：' }
             ]
           }
         ],
         dataSource: 'static',
-        showHeader: true,
+        showHeader: false,
         bordered: true,
         canWriteback: false
       }
@@ -184,8 +184,8 @@ export const DEFAULT_TEMPLATE: Template = {
       type: 'loop',
       position: { x: 40, y: 730 },
       config: {
-        fieldId: '', // 需要在编辑界面选择关联字段（原料标准明细）
-        fieldName: '',
+        fieldId: 'fldNR0Xikc', // 关联字段：原材料标准明细
+        fieldName: '原材料标准明细',
         filter: {
           fieldId: 'fldGoRS3H0', // 标准章节字段
           operator: 'equals',
@@ -240,8 +240,8 @@ export const DEFAULT_TEMPLATE: Template = {
       type: 'loop',
       position: { x: 40, y: 940 },
       config: {
-        fieldId: '', // 需要在编辑界面选择关联字段（原料标准明细）
-        fieldName: '',
+        fieldId: 'fldNR0Xikc', // 关联字段：原材料标准明细
+        fieldName: '原材料标准明细',
         filter: {
           fieldId: 'fldGoRS3H0', // 标准章节字段
           operator: 'equals',
@@ -296,8 +296,8 @@ export const DEFAULT_TEMPLATE: Template = {
       type: 'loop',
       position: { x: 40, y: 1140 },
       config: {
-        fieldId: '', // 需要在编辑界面选择关联字段（原料标准明细）
-        fieldName: '',
+        fieldId: 'fldNR0Xikc', // 关联字段：原材料标准明细
+        fieldName: '原材料标准明细',
         filter: {
           fieldId: 'fldGoRS3H0', // 标准章节字段
           operator: 'equals',
@@ -352,8 +352,8 @@ export const DEFAULT_TEMPLATE: Template = {
       type: 'loop',
       position: { x: 40, y: 1340 },
       config: {
-        fieldId: '', // 需要在编辑界面选择关联字段（原料标准明细）
-        fieldName: '',
+        fieldId: 'fldNR0Xikc', // 关联字段：原材料标准明细
+        fieldName: '原材料标准明细',
         filter: {
           fieldId: 'fldGoRS3H0', // 标准章节字段
           operator: 'equals',
@@ -408,8 +408,8 @@ export const DEFAULT_TEMPLATE: Template = {
       type: 'loop',
       position: { x: 40, y: 1540 },
       config: {
-        fieldId: '', // 需要在编辑界面选择关联字段（原料标准明细）
-        fieldName: '',
+        fieldId: 'fldNR0Xikc', // 关联字段：原材料标准明细
+        fieldName: '原材料标准明细',
         filter: {
           fieldId: 'fldGoRS3H0', // 标准章节字段
           operator: 'equals',

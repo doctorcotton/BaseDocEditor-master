@@ -52,7 +52,6 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
     case FieldType.Barcode:
     case FieldType.Email:
     case FieldType.Phone:
-    case FieldType.Url:
       // 处理数组类型的文本值（多行文本可能返回数组）
       if (Array.isArray(value)) {
         return value.map(v => {
@@ -61,6 +60,24 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
           }
           return String(v || '');
         }).filter(Boolean).join('\n');
+      }
+      return String(value || '');
+
+    case FieldType.Url:
+      // URL 字段可能返回 {link: string, text?: string} 或数组格式
+      // 飞书文档链接会有 text 属性表示文档名称
+      if (Array.isArray(value)) {
+        return value.map(v => {
+          if (typeof v === 'object' && v !== null) {
+            // 优先使用 text（文档名称），其次使用 link（URL）
+            return v.text || v.name || v.link || v.url || '';
+          }
+          return String(v || '');
+        }).filter(Boolean).join('\n');
+      }
+      if (typeof value === 'object' && value !== null) {
+        // 优先使用 text（飞书文档名称），其次使用 link
+        return value.text || value.name || value.link || value.url || '';
       }
       return String(value || '');
 

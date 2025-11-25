@@ -21,6 +21,7 @@ interface TemplateRendererProps {
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
   onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
+  refreshKey?: number; // 用于触发数据刷新
 }
 
 export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
@@ -30,7 +31,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   table,
   onComment,
   commentStats,
-  onFieldChange
+  onFieldChange,
+  refreshKey = 0
 }) => {
   // 异步加载字段值（用于字段元素）
   const [fieldValues, setFieldValues] = useState<Map<string, any>>(new Map());
@@ -86,16 +88,13 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     };
 
     loadFieldValues();
-  }, [table, record?.recordId, template.elements]);
+  }, [table, record?.recordId, template.elements, refreshKey]);
 
   // 自动保存并退出编辑
   const handleSaveAndExit = useCallback(() => {
     if (editingFieldId && onFieldChange && editingValue !== null) {
       const field = fields.find(f => f.id === editingFieldId);
       if (field) {
-        // 获取旧值（用于回调）
-        const oldValue = fieldValues.get(editingFieldId);
-        const finalOldValue = oldValue !== undefined ? oldValue : record.fields[editingFieldId];
         const newValue = editingValue;
         
         // 比较显示文本，只有真正改变时才调用变更回调
@@ -108,8 +107,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
             initialText: initialEditingText,
             newValue 
           });
-          // 调用变更回调
-          onFieldChange(editingFieldId, newValue, finalOldValue);
+          // 调用变更回调 - 注意：oldValue 使用显示文本，这样撤销时可以正确恢复
+          onFieldChange(editingFieldId, newValue, initialEditingText);
           
           // 更新本地值
           setFieldValues(prev => {
@@ -288,6 +287,179 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     const emptyDisplayText = fieldResult.fieldId === 'fldNL9B304' ? '无' : '空';
     const isAllergenField = fieldResult.fieldId === 'fldNL9B304'; // 致敏物质信息字段不显示标签
 
+    // 检查是否是 URL 字段，提取链接
+    const isUrlField = fieldResult.fieldType === FieldType.Url;
+    const extractUrlLink = (val: any): string | null => {
+      if (!val) return null;
+      if (Array.isArray(val)) {
+        const first = val[0];
+        if (typeof first === 'string' && first.startsWith('http')) return first;
+        if (first && typeof first === 'object') return first.link || first.url || null;
+        return null;
+      }
+      if (typeof val === 'string' && val.startsWith('http')) return val;
+      if (typeof val === 'object') return val.link || val.url || null;
+      return null;
+    };
+    const urlLink = isUrlField ? extractUrlLink(value) : null;
+
+    // 检查文本字段中是否包含富文本超链接
+    // 飞书文本字段中的超链接格式可能有多种：
+    // 1. [{type: 'url', text: '链接文字', link: 'https://...'}]
+    // 2. [{type: 'text', text: '普通文字'}, {type: 'url', text: '链接', link: '...'}]
+    // 3. 直接包含 http:// 或 https:// 的字符串
+    const hasRichTextLinks = (val: any): boolean => {
+      if (!val) return false;
+      // 检查字符串中是否包含 URL
+      if (typeof val === 'string') {
+        return /https?:\/\/[^\s]+/.test(val);
+      }
+      if (!Array.isArray(val)) return false;
+      return val.some(v => {
+        if (!v) return false;
+        // 对象格式的超链接
+        if (typeof v === 'object' && v.type === 'url' && v.link) return true;
+        // 检查对象中是否有 link 属性
+        if (typeof v === 'object' && v.link) return true;
+        // 检查文本内容中是否包含 URL
+        if (typeof v === 'string' && /https?:\/\/[^\s]+/.test(v)) return true;
+        if (typeof v === 'object' && v.text && /https?:\/\/[^\s]+/.test(v.text)) return true;
+        return false;
+      });
+    };
+
+    // 渲染富文本内容（支持超链接）
+    const renderRichText = (val: any): React.ReactNode => {
+      if (!val) return '';
+      
+      // 如果是字符串，检查是否包含 URL 并渲染
+      if (typeof val === 'string') {
+        return renderTextWithLinks(val);
+      }
+      
+      if (!Array.isArray(val)) {
+        return String(val || '');
+      }
+      
+      return val.map((item, index) => {
+        if (!item) return null;
+        
+        // 字符串类型：检查是否包含 URL
+        if (typeof item === 'string') {
+          return <span key={index}>{renderTextWithLinks(item)}</span>;
+        }
+        
+        if (typeof item !== 'object') {
+          return <span key={index}>{String(item || '')}</span>;
+        }
+        
+        // 超链接类型（type: 'url'）
+        if (item.type === 'url' && item.link) {
+          return (
+            <a
+              key={index}
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="field-value-link"
+              onClick={(e) => e.stopPropagation()}
+              title={item.link}
+            >
+              {item.text || item.link}
+            </a>
+          );
+        }
+        
+        // 对象中直接包含 link 属性
+        if (item.link) {
+          return (
+            <a
+              key={index}
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="field-value-link"
+              onClick={(e) => e.stopPropagation()}
+              title={item.link}
+            >
+              {item.text || item.name || item.link}
+            </a>
+          );
+        }
+        
+        // 普通文本对象：检查文本内容是否包含 URL
+        const textContent = item.text || item.name || item.value || '';
+        if (textContent && /https?:\/\/[^\s]+/.test(textContent)) {
+          return <span key={index}>{renderTextWithLinks(textContent)}</span>;
+        }
+        
+        return <span key={index}>{textContent}</span>;
+      });
+    };
+    
+    // 将文本中的 URL 转换为可点击链接
+    const renderTextWithLinks = (text: string): React.ReactNode => {
+      if (!text) return '';
+      
+      // 匹配 URL 的正则表达式
+      const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g;
+      const parts = text.split(urlRegex);
+      
+      if (parts.length === 1) {
+        return text; // 没有 URL，直接返回文本
+      }
+      
+      return parts.map((part, index) => {
+        if (urlRegex.test(part)) {
+          // 重置正则表达式的 lastIndex
+          urlRegex.lastIndex = 0;
+          return (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="field-value-link"
+              onClick={(e) => e.stopPropagation()}
+              title={part}
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      });
+    };
+
+    const hasLinks = hasRichTextLinks(value);
+
+    // 渲染字段值内容
+    const renderFieldValue = () => {
+      if (isEmptyValue) {
+        return <span className="field-empty">{emptyDisplayText}</span>;
+      }
+      // URL 字段渲染为可点击链接
+      if (isUrlField && urlLink) {
+        return (
+          <a 
+            href={urlLink} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="field-value-link"
+            onClick={(e) => e.stopPropagation()}
+            title={urlLink}
+          >
+            {displayValue}
+          </a>
+        );
+      }
+      // 文本字段中包含超链接，使用富文本渲染
+      if (hasLinks) {
+        return renderRichText(value);
+      }
+      return displayValue;
+    };
+
     return (
       <div
         key={element.id}
@@ -326,11 +498,11 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
           <>
             <div 
               className="field-content"
-              title={editable ? '双击编辑' : ''}
+              title={editable ? '双击编辑' : (urlLink || '')}
               style={{ userSelect: 'none' }}
             >
               {!isAllergenField && <span className="field-label">{fieldResult.fieldName}:</span>}
-              <span className="field-value">{isEmptyValue ? <span className="field-empty">{emptyDisplayText}</span> : displayValue}</span>
+              <span className="field-value">{renderFieldValue()}</span>
             </div>
             {hasComments && onComment && (
               <div
@@ -363,8 +535,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
           if (fieldName) {
             return f.name === fieldName;
           }
-          // 默认查找包含"标准明细"的字段
-          return f.name.includes('标准明细') || f.name.includes('明细');
+          // 默认查找包含"标准明细"或"原材料标准明细"的字段
+          return f.name.includes('标准明细') || f.name.includes('明细') || f.name.includes('原材料');
         }
         return false;
       });
@@ -420,6 +592,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         onComment={onComment}
         commentStats={commentStats}
         onFieldChange={onFieldChange}
+        refreshKey={refreshKey}
       />
     );
   };
@@ -488,9 +661,44 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
       );
     }
 
-    const value = context.record.fields[fieldId];
-    const url = typeof value === 'string' ? value : value?.url || '';
-    const linkText = config.text || url || '链接';
+    // 优先使用异步加载的值
+    let value = fieldValues.get(fieldId);
+    if (value === undefined) {
+      value = context.record.fields[fieldId];
+    }
+
+    // 解析 URL 字段值
+    // 飞书的 URL 字段可能返回:
+    // 1. 字符串: "https://xxx"
+    // 2. 对象: { link: "https://xxx", text: "文档名称" }
+    // 3. 数组: [{ link: "https://xxx", text: "文档名称" }]
+    let url = '';
+    let linkText = '';
+
+    if (Array.isArray(value)) {
+      // 数组格式，取第一个
+      const firstItem = value[0];
+      if (typeof firstItem === 'string') {
+        url = firstItem;
+        linkText = firstItem;
+      } else if (firstItem && typeof firstItem === 'object') {
+        url = firstItem.link || firstItem.url || '';
+        // 优先使用 text（飞书文档名称）
+        linkText = firstItem.text || firstItem.name || url;
+      }
+    } else if (typeof value === 'string') {
+      url = value;
+      linkText = value;
+    } else if (value && typeof value === 'object') {
+      url = value.link || value.url || '';
+      // 优先使用 text（飞书文档名称）
+      linkText = value.text || value.name || url;
+    }
+
+    // 如果配置了自定义文本，使用配置的文本
+    if (config.text) {
+      linkText = config.text;
+    }
 
     if (!url) {
       return (
@@ -505,8 +713,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         key={element.id}
         className="template-element template-link"
       >
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          {linkText}
+        <a href={url} target="_blank" rel="noopener noreferrer" title={url}>
+          {linkText || '链接'}
         </a>
       </div>
     );

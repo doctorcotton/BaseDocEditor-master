@@ -22,6 +22,14 @@
 .header-right {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.undo-redo-buttons {
+  display: flex;
+  gap: 4px;
+  padding-right: 16px;
+  border-right: 1px solid var(--semi-color-border);
 }
 
 .template-page-body {

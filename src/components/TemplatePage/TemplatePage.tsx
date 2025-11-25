@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock } from '@douyinfe/semi-icons';
+import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip } from '@douyinfe/semi-ui';
+import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo } from '@douyinfe/semi-icons';
 import { bitable, IRecord, IFieldMeta, ITable } from '@lark-base-open/js-sdk';
 import { Template } from '../../types/template';
 import { TemplateEditor } from '../TemplateEditor/TemplateEditor';
@@ -14,6 +14,7 @@ import { useTemplateStorage } from '../../hooks/useTemplateStorage';
 import { CommentPanel } from '../CommentPanel/CommentPanel';
 import { useCommentStorage } from '../../hooks/useCommentStorage';
 import { useDocumentSync } from '../../hooks/useDocumentSync';
+import { useUndoRedo, useUndoRedoKeyboard, UndoableAction } from '../../hooks/useUndoRedo';
 import { FieldChange } from '../../types';
 import { DEFAULT_TEMPLATE } from '../../config/defaultTemplate';
 import './TemplatePage.css';
@@ -70,6 +71,87 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     syncChanges,
     clearSyncResult
   } = useDocumentSync();
+
+  // 用于触发画布数据刷新的 key
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // 撤销/重做功能
+  const handleUndoAction = async (action: UndoableAction): Promise<boolean> => {
+    // 撤销操作：将字段值恢复为 oldValue
+    const field = fields.find(f => f.id === action.fieldId);
+    if (!field) return false;
+
+    const change: FieldChange = {
+      recordId: action.recordId,
+      fieldId: action.fieldId,
+      fieldName: action.fieldName,
+      oldValue: action.newValue, // 当前值变成旧值
+      newValue: action.oldValue, // 恢复到旧值
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+
+    try {
+      const success = await syncChanges(table, [change], fields);
+      if (success) {
+        // 刷新画布显示
+        setRefreshKey(prev => prev + 1);
+        Toast.info(`已撤销：${action.fieldName}`);
+        return true;
+      }
+      Toast.error(`撤销失败：${action.fieldName}`);
+      return false;
+    } catch (error) {
+      console.error('[TemplatePage] 撤销失败:', error);
+      return false;
+    }
+  };
+
+  const handleRedoAction = async (action: UndoableAction): Promise<boolean> => {
+    // 重做操作：将字段值恢复为 newValue
+    const field = fields.find(f => f.id === action.fieldId);
+    if (!field) return false;
+
+    const change: FieldChange = {
+      recordId: action.recordId,
+      fieldId: action.fieldId,
+      fieldName: action.fieldName,
+      oldValue: action.oldValue,
+      newValue: action.newValue,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+
+    try {
+      const success = await syncChanges(table, [change], fields);
+      if (success) {
+        // 刷新画布显示
+        setRefreshKey(prev => prev + 1);
+        Toast.info(`已重做：${action.fieldName}`);
+        return true;
+      }
+      Toast.error(`重做失败：${action.fieldName}`);
+      return false;
+    } catch (error) {
+      console.error('[TemplatePage] 重做失败:', error);
+      return false;
+    }
+  };
+
+  const {
+    canUndo,
+    canRedo,
+    pushAction,
+    undo,
+    redo
+  } = useUndoRedo({
+    maxHistory: 50,
+    onUndo: handleUndoAction,
+    onRedo: handleRedoAction
+  });
+
+  // 启用键盘快捷键（仅在预览模式下）
+  useUndoRedoKeyboard(undo, redo, canUndo, canRedo, activeTab === 'preview');
 
   // 评论统计
   const commentStats = new Map<string, { total: number; unresolved: number }>();
@@ -343,6 +425,16 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
               : c
           )
         );
+        
+        // 记录到撤销栈（只有同步成功才记录）
+        pushAction({
+          fieldId: fieldId,
+          fieldName: field.name,
+          recordId: record.recordId,
+          oldValue: oldValue,
+          newValue: newValue
+        });
+        
         Toast.success(`字段"${field.name}"已更新`);
       } else {
         // 更新变更状态为失败
@@ -374,6 +466,26 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
           </Title>
         </div>
         <div className="header-right">
+          {activeTab === 'preview' && (
+            <div className="undo-redo-buttons">
+              <Tooltip content="撤销 (Ctrl+Z)">
+                <Button
+                  icon={<IconUndo />}
+                  type="tertiary"
+                  disabled={!canUndo}
+                  onClick={() => undo()}
+                />
+              </Tooltip>
+              <Tooltip content="重做 (Ctrl+Shift+Z)">
+                <Button
+                  icon={<IconRedo />}
+                  type="tertiary"
+                  disabled={!canRedo}
+                  onClick={() => redo()}
+                />
+              </Tooltip>
+            </div>
+          )}
           <Tabs
             activeKey={activeTab}
             onChange={(key) => setActiveTab(key as 'edit' | 'preview')}
@@ -507,6 +619,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
               onComment={handleOpenComment}
               commentStats={commentStats}
               onFieldChange={handleFieldChange}
+              refreshKey={refreshKey}
             />
           ) : (
             <div className="template-empty">

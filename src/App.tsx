@@ -78,7 +78,7 @@ export default function App() {
             <Title heading={4} style={{ margin: 0 }}>
               📝 BaseDocEditor
             </Title>
-            <Text type="tertiary" size="small">文档化编辑器</Text>
+            <Text type="tertiary" size="small">原料品质标准文档化编辑器 @史海鹏</Text>
           </div>
           <div className="header-right">
             <Select

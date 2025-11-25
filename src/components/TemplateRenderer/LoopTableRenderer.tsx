@@ -41,19 +41,32 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
     const loadFieldValues = async () => {
       const valueMap = new Map<string, Map<string, any>>();
       
-      // 收集所有需要加载的字段ID
+      // 收集所有需要加载的字段ID，并验证字段是否存在于关联表中
       const fieldIdsToLoad = new Set<string>();
+      // 创建字段ID到字段元数据的映射，用于快速查找
+      const validFieldIds = new Set(fields.map(f => f.id));
+      
       columns.forEach((col: any) => {
-        if (col.fieldId) {
+        if (col.fieldId && validFieldIds.has(col.fieldId)) {
           fieldIdsToLoad.add(col.fieldId);
         }
         // 检查是否有列配置需要拼接字段
         if (columnConfig[col.id] && columnConfig[col.id].fields) {
           columnConfig[col.id].fields.forEach((fieldId: string) => {
-            fieldIdsToLoad.add(fieldId);
+            // 只添加在关联表中存在的字段
+            if (validFieldIds.has(fieldId)) {
+              fieldIdsToLoad.add(fieldId);
+            }
           });
         }
       });
+
+      // 如果没有需要加载的字段，直接返回
+      if (fieldIdsToLoad.size === 0) {
+        console.log('[LoopTableRenderer] 没有需要加载的有效字段');
+        setFieldValuesMap(valueMap);
+        return;
+      }
 
       // 批量加载字段值
       try {
@@ -62,13 +75,15 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
           
           for (const fieldId of fieldIdsToLoad) {
             try {
+              // 优先从 record.fields 读取
               let value = record.fields?.[fieldId];
               if (value === undefined && table) {
+                // 只有当字段在关联表中存在时才调用 API
                 value = await table.getCellValue(fieldId, record.recordId);
               }
               recordValueMap.set(fieldId, value);
             } catch (error) {
-              console.error(`[LoopTableRenderer] 加载字段值失败: ${fieldId}`, error);
+              // 静默处理单个字段加载失败，不打印错误日志
               recordValueMap.set(fieldId, null);
             }
           }
@@ -83,7 +98,7 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
     };
 
     loadFieldValues();
-  }, [table, records, columns, columnConfig]);
+  }, [table, records, columns, columnConfig, fields]);
 
   // 构建表格列定义
   const tableColumns = columns.map((col: any) => ({

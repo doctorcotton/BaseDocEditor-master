@@ -83,6 +83,21 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
       setLinkedTable(linkedTableInstance);
       
       // 应用筛选条件（使用关联表的字段）
+      console.log('[LoopAreaRenderer] 筛选条件:', filter);
+      console.log('[LoopAreaRenderer] 记录字段示例:', records.length > 0 ? records[0].fields : '无记录');
+      
+      // 检查筛选字段是否存在
+      if (filter && filter.fieldId) {
+        const filterField = linkedTableFields.find(f => f.id === filter.fieldId);
+        console.log('[LoopAreaRenderer] 筛选字段信息:', filterField);
+        
+        // 打印每条记录的筛选字段值
+        records.forEach((r, i) => {
+          const fieldValue = r.fields[filter.fieldId];
+          console.log(`[LoopAreaRenderer] 记录${i}的筛选字段值:`, fieldValue);
+        });
+      }
+      
       const filtered = filter && linkedTableFields.length > 0 
         ? filterRecords(records, filter, linkedTableFields) 
         : records;

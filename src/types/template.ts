@@ -123,6 +123,7 @@ export interface TableCell {
   content?: string; // type=text 时的文本内容
   fieldId?: string; // type=field 时的字段ID
   fieldPath?: string; // type=field 时的字段路径
+  labelPrefix?: string; // 字段值前的标签前缀，如 "标准编号："
 }
 
 /**
