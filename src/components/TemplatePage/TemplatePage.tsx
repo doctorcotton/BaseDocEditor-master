@@ -807,6 +807,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
             activeKey={activeTab}
             onChange={(key) => setActiveTab(key as 'edit' | 'preview')}
             type="button"
+            className="template-tabs-hidden"
           >
             <TabPane tab="预览" itemKey="preview" />
             <TabPane tab="编辑模板" itemKey="edit" />

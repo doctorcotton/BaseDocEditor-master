@@ -49,7 +49,7 @@ export const DEFAULT_TEMPLATE: Template = {
             id: 'row2',
             cells: [
               { columnId: 'col1', type: 'field', fieldId: 'fldLwa5wPM', fieldPath: '编制人', labelPrefix: '编制人：' },
-              { columnId: 'col2', type: 'field', fieldPath: '审核人', labelPrefix: '审核人：' },
+              { columnId: 'col2', type: 'field', fieldId: 'fldo4bjat2', fieldPath: '审核人', labelPrefix: '审核人：' },
               { columnId: 'col3', type: 'field', fieldId: 'fldeb7GDn5', fieldPath: '批准人', labelPrefix: '批准人：' }
             ]
           }

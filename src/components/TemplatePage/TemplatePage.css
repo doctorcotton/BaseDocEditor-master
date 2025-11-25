@@ -100,6 +100,11 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* 隐藏预览/编辑模板标签页按钮（保留代码，仅 CSS 隐藏） */
+.template-tabs-hidden {
+  display: none;
+}
+
 .sidebar-header {
   padding: 16px;
   border-bottom: 1px solid var(--semi-color-border);
