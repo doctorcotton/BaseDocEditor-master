@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Table, Input, Select, Toast } from '@douyinfe/semi-ui';
+import { Table, Input, Select, Toast, TextArea } from '@douyinfe/semi-ui';
 import { IRecord, IFieldMeta, FieldType, bitable } from '@lark-base-open/js-sdk';
 import dayjs from 'dayjs';
 import { TemplateElement } from '../../types/template';
@@ -681,27 +681,54 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
     );
   };
 
+  // 判断文本是否为长文本（包含换行符或长度超过30个字符）
+  const isLongText = (text: string | null | undefined): boolean => {
+    if (!text) return false;
+    const str = String(text);
+    return str.includes('\n') || str.length > 15;
+  };
+
   // 渲染文本编辑器
   const renderTextEditor = (recordId: string, fieldId: string) => {
+    const shouldUseTextArea = isLongText(editingValue);
+    
     return (
       <div ref={editingCellRef} className="loop-table-cell-editing">
-        <Input
-          value={editingValue || ''}
-          onChange={(val) => setEditingValue(val)}
-          onBlur={handleSaveEdit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSaveEdit();
-            } else if (e.key === 'Escape') {
-              setEditingCell(null);
-              setEditingValue(null);
-            }
-          }}
-          autoFocus
-          size="small"
-          style={{ width: '100%' }}
-        />
+        {shouldUseTextArea ? (
+          <TextArea
+            value={editingValue || ''}
+            onChange={(val) => setEditingValue(val)}
+            onBlur={handleSaveEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setEditingCell(null);
+                setEditingValue(null);
+              }
+              // TextArea 中 Enter 键用于换行，不阻止默认行为
+            }}
+            autoFocus
+            autosize={{ minRows: 3, maxRows: 10 }}
+            style={{ width: '100%' }}
+          />
+        ) : (
+          <Input
+            value={editingValue || ''}
+            onChange={(val) => setEditingValue(val)}
+            onBlur={handleSaveEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveEdit();
+              } else if (e.key === 'Escape') {
+                setEditingCell(null);
+                setEditingValue(null);
+              }
+            }}
+            autoFocus
+            size="small"
+            style={{ width: '100%' }}
+          />
+        )}
       </div>
     );
   };

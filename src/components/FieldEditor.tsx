@@ -15,11 +15,11 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   onBlur,
   fieldMeta
 }) => {
-  // 判断文本是否为长文本（包含换行符或长度超过50个字符）
+  // 判断文本是否为长文本（包含换行符或长度超过30个字符）
   const isLongText = (text: string | null | undefined): boolean => {
     if (!text) return false;
     const str = String(text);
-    return str.includes('\n') || str.length > 50;
+    return str.includes('\n') || str.length > 30;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

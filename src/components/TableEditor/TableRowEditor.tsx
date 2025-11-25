@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Button, Input, Radio, RadioGroup, Card, Space } from '@douyinfe/semi-ui';
+import { Button, Input, Radio, RadioGroup, Card, Space, TextArea } from '@douyinfe/semi-ui';
 import { IconPlus, IconDelete, IconArrowUp, IconArrowDown } from '@douyinfe/semi-icons';
 import { IFieldMeta } from '@lark-base-open/js-sdk';
 import { TableColumn, TableRow, TableCell } from '../../types/template';
@@ -141,6 +141,13 @@ export const TableRowEditor: React.FC<TableRowEditorProps> = ({
     return row.cells.find(c => c.columnId === columnId);
   };
 
+  // 判断文本是否为长文本（包含换行符或长度超过30个字符）
+  const isLongText = (text: string | null | undefined): boolean => {
+    if (!text) return false;
+    const str = String(text);
+    return str.includes('\n') || str.length > 15;
+  };
+
   if (columns.length === 0) {
     return (
       <div className="table-row-editor-empty">
@@ -210,11 +217,21 @@ export const TableRowEditor: React.FC<TableRowEditorProps> = ({
                       </RadioGroup>
 
                       {cell.type === 'text' ? (
-                        <Input
-                          value={cell.content || ''}
-                          onChange={(value) => handleCellContentChange(row.id, column.id, value)}
-                          placeholder="输入固定文本"
-                        />
+                        isLongText(cell.content) ? (
+                          <TextArea
+                            value={cell.content || ''}
+                            onChange={(value) => handleCellContentChange(row.id, column.id, value)}
+                            placeholder="输入固定文本"
+                            autosize={{ minRows: 3, maxRows: 10 }}
+                            style={{ width: '100%' }}
+                          />
+                        ) : (
+                          <Input
+                            value={cell.content || ''}
+                            onChange={(value) => handleCellContentChange(row.id, column.id, value)}
+                            placeholder="输入固定文本"
+                          />
+                        )
                       ) : (
                         <div>
                           <Button
