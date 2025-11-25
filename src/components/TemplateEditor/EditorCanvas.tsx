@@ -37,12 +37,12 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
   // 添加元素菜单
   const addElementMenu = [
-    { node: 'item', name: '文本', value: 'text' },
-    { node: 'item', name: '字段', value: 'field' },
-    { node: 'item', name: '表格', value: 'table' },
-    { node: 'item', name: '循环区域', value: 'loop' },
-    { node: 'item', name: '图片', value: 'image' },
-    { node: 'item', name: '超链接', value: 'link' }
+    { node: 'item' as const, name: '文本', value: 'text' },
+    { node: 'item' as const, name: '字段', value: 'field' },
+    { node: 'item' as const, name: '表格', value: 'table' },
+    { node: 'item' as const, name: '循环区域', value: 'loop' },
+    { node: 'item' as const, name: '图片', value: 'image' },
+    { node: 'item' as const, name: '超链接', value: 'link' }
   ];
 
   // 处理添加元素菜单点击：设置待添加的元素类型
@@ -224,11 +224,12 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
               value={editingValue}
               onChange={setEditingValue}
               onBlur={handleSaveEdit}
-              onPressEnter={handleSaveEdit}
               autoFocus
               style={{ width: '100%' }}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') {
+                if (e.key === 'Enter') {
+                  handleSaveEdit();
+                } else if (e.key === 'Escape') {
                   handleCancelEdit();
                 }
               }}

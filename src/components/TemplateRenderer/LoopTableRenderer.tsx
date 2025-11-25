@@ -500,7 +500,9 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
           if (Array.isArray(fieldValue)) {
             for (const item of fieldValue) {
               const itemText = extractTextFromValue(item);
-              const itemId = item?.id || item?.record_id;
+              const itemId = (item && typeof item === 'object' && 'id' in item) ? (item as any).id : 
+                           (item && typeof item === 'object' && 'record_id' in item) ? (item as any).record_id : 
+                           undefined;
               if (itemId === sourceId || itemText === sourceName) {
                 return true;
               }

@@ -245,12 +245,11 @@ export const TableEditor: React.FC<TableEditorProps> = ({
             添加列
           </Button>
           <div className="table-editor-options">
+            <span style={{ marginRight: 8 }}>支持反写</span>
             <Switch
               checked={canWriteback}
               onChange={setCanWriteback}
-            >
-              支持反写
-            </Switch>
+            />
           </div>
         </div>
 

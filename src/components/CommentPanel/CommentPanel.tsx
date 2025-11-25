@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Button, Avatar, Typography, Tag, Upload, Spin } from '@douyinfe/semi-ui';
+import { Card, Input, Button, Avatar, Typography, Tag, Upload, Spin, TextArea } from '@douyinfe/semi-ui';
 import { IconSend, IconImage, IconClose } from '@douyinfe/semi-icons';
 import { Comment } from '../../types/comment';
 import { useCommentStorage } from '../../hooks/useCommentStorage';
@@ -82,10 +82,11 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   };
 
   // 处理附件上传
-  const handleAttachmentChange = (fileList: any[]) => {
+  const handleAttachmentChange = (info: any) => {
+    const fileList = info.fileList || [];
     const tokens = fileList
-      .filter(file => file.status === 'success' && file.response?.token)
-      .map(file => file.response.token);
+      .filter((file: any) => file.status === 'success' && file.response?.token)
+      .map((file: any) => file.response.token);
     setAttachments(tokens);
   };
 
@@ -122,21 +123,21 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
 
   return (
     <div className="comment-panel-overlay" onClick={onClose}>
-      <Card
-        className="comment-panel"
-        onClick={(e) => e.stopPropagation()}
-        title={
-          <div className="comment-panel-header">
-            <Text strong>评论 ({commentList.length})</Text>
-            <Button
-              icon={<IconClose />}
-              type="tertiary"
-              size="small"
-              onClick={onClose}
-            />
-          </div>
-        }
-      >
+      <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+        <Card
+          className="comment-panel"
+          title={
+            <div className="comment-panel-header">
+              <Text strong>评论 ({commentList.length})</Text>
+              <Button
+                icon={<IconClose />}
+                type="tertiary"
+                size="small"
+                onClick={onClose}
+              />
+            </div>
+          }
+        >
         <div className="comment-panel-content">
           {loading ? (
             <Spin />
@@ -178,18 +179,16 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                   </div>
                 )}
 
-                <Input
+                <TextArea
                   value={content}
                   onChange={setContent}
                   placeholder={replyingTo ? '输入回复...' : '输入评论...'}
-                  onPressEnter={(e) => {
-                    if (e.shiftKey) {
-                      return; // Shift+Enter 换行
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
                     }
-                    e.preventDefault();
-                    handleSend();
                   }}
-                  type="textarea"
                   rows={3}
                 />
 
@@ -223,6 +222,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
           )}
         </div>
       </Card>
+      </div>
     </div>
   );
 };

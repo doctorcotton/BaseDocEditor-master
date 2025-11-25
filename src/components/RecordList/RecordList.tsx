@@ -210,7 +210,7 @@ export const RecordList: React.FC<RecordListProps> = ({
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 条记录`
+          showTotal: true
         }}
         onRow={(record) => ({
           onClick: () => {

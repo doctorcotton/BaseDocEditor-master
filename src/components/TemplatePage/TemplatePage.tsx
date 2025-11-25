@@ -7,7 +7,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout, Button, List, Card, Tabs, Typography, Modal, Input, Toast, Tooltip, Slider, Select } from '@douyinfe/semi-ui';
 import { IconPlus, IconEdit, IconCopy, IconDelete, IconLock, IconUnlock, IconUndo, IconRedo, IconRefresh, IconArrowLeft, IconDownload } from '@douyinfe/semi-icons';
 import { bitable, IRecord, IFieldMeta, ITable, FieldType } from '@lark-base-open/js-sdk';
-import { pdf } from '@react-pdf/renderer';
 import dayjs from 'dayjs';
 import { Template } from '../../types/template';
 import { TemplateEditor } from '../TemplateEditor/TemplateEditor';
@@ -20,7 +19,6 @@ import { useUndoRedo, useUndoRedoKeyboard, UndoableAction } from '../../hooks/us
 import { FieldChange } from '../../types';
 import { DEFAULT_TEMPLATE } from '../../config/defaultTemplate';
 import { formatFieldValue } from '../../utils/fieldFormatter';
-import { PdfDocument } from '../PdfExport/PdfDocument';
 import { preloadLoopData } from '../../utils/pdfLoader';
 import './TemplatePage.css';
 
@@ -646,6 +644,13 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
         console.log('[TemplatePage] 开始预加载循环数据...');
         const loopDataCache = await preloadLoopData(selectedTemplate, record, table);
         console.log('[TemplatePage] 循环数据预加载完成');
+
+        // 动态加载 PDF 相关模块，避免主包过大
+        console.log('[TemplatePage] 动态加载 PDF 模块...');
+        const [{ pdf }, { PdfDocument }] = await Promise.all([
+          import('@react-pdf/renderer'),
+          import('../PdfExport/PdfDocument')
+        ]);
         
         // 使用 React-PDF 生成 PDF
         console.log('[TemplatePage] 开始生成 PDF...');
@@ -817,7 +822,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
 
       <Layout className="template-page-body">
         {/* 左侧边栏 - 模板管理 */}
-        <Sider width={280} className="template-sidebar">
+        <Sider className="template-sidebar" style={{ width: 280 }}>
           <div className="sidebar-header">
             <Button
               icon={<IconPlus />}
@@ -995,7 +1000,11 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
           placeholder="输入模板名称"
           value={newTemplateName}
           onChange={setNewTemplateName}
-          onPressEnter={handleCreateTemplate}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleCreateTemplate();
+            }
+          }}
         />
       </Modal>
 

@@ -58,8 +58,8 @@ export const FieldSelector: React.FC<FieldSelectorProps> = ({
   };
 
   // 字段类型颜色
-  const getFieldTypeColor = (type: FieldType): string => {
-    const colorMap: Record<number, string> = {
+  const getFieldTypeColor = (type: FieldType): 'blue' | 'green' | 'orange' | 'purple' | 'cyan' | 'pink' | 'red' | 'yellow' | 'violet' | 'grey' => {
+    const colorMap: Record<number, 'blue' | 'green' | 'orange' | 'purple' | 'cyan' | 'pink' | 'red' | 'yellow' | 'violet' | 'grey'> = {
       1: 'blue',
       2: 'green',
       3: 'orange',

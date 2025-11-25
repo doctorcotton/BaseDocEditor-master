@@ -4,9 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Input, InputNumber, Select, Switch, Button, Form, Tag } from '@douyinfe/semi-ui';
+import { Input, InputNumber, Select, Switch, Button, Form, Tag, TextArea } from '@douyinfe/semi-ui';
 import { TemplateElement } from '../../types/template';
 import { FieldSelector } from '../FieldSelector/FieldSelector';
+import { FieldType } from '@lark-base-open/js-sdk';
 import './TemplateEditor.css';
 
 interface PropertyPanelProps {
@@ -26,6 +27,32 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 }) => {
   const [showFieldSelector, setShowFieldSelector] = useState(false);
   const [fieldSelectorContext, setFieldSelectorContext] = useState<'field' | 'loop' | null>(null);
+
+  // 获取字段类型名称
+  const getFieldTypeName = (type: FieldType): string => {
+    const typeNames: Record<number, string> = {
+      1: '文本',
+      2: '数字',
+      3: '单选',
+      4: '多选',
+      5: '日期',
+      7: '复选框',
+      11: '人员',
+      13: '电话',
+      15: '超链接',
+      17: '附件',
+      18: '关联',
+      19: '公式',
+      20: '双向关联',
+      21: '地理位置',
+      22: '群组',
+      23: '创建时间',
+      1001: '创建人',
+      1002: '修改时间',
+      1003: '修改人'
+    };
+    return typeNames[type] || `类型${type}`;
+  };
 
   const handleConfigChange = (key: string, value: any) => {
     onUpdate({
@@ -92,10 +119,9 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           <>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>文本内容</label>
-              <Input
+              <TextArea
                 value={(element.config as any).content || ''}
                 onChange={(value) => handleConfigChange('content', value)}
-                type="textarea"
                 rows={4}
               />
             </div>

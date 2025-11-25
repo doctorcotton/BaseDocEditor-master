@@ -162,30 +162,39 @@ export function useCommentStorage(): UseCommentStorageResult {
         
         // 检查是否匹配
         const recordMatch = Array.isArray(relatedRecordId) 
-          ? relatedRecordId.some((r: any) => (r.recordId || r.id) === recordId)
-          : (relatedRecordId?.recordId || relatedRecordId?.id) === recordId;
+          ? relatedRecordId.some((r: any) => (r && typeof r === 'object' && (r.recordId || r.id)) === recordId)
+          : (relatedRecordId && typeof relatedRecordId === 'object' && ((relatedRecordId as any).recordId || (relatedRecordId as any).id)) === recordId;
         
         if (recordMatch) {
           // 如果指定了fieldId，只返回该字段的评论；否则返回所有评论
-          if (!fieldId || commentFieldId === fieldId) {
+          const fieldIdValue = typeof commentFieldId === 'string' ? commentFieldId : undefined;
+          if (!fieldId || fieldIdValue === fieldId) {
+            const contentValue = record.fields[commentTableConfig.fieldIds.content];
+            const authorValue = record.fields[commentTableConfig.fieldIds.author];
+            const timestampValue = record.fields[commentTableConfig.fieldIds.timestamp];
+            const resolvedValue = record.fields[commentTableConfig.fieldIds.resolved];
+            const parentCommentValue = record.fields[commentTableConfig.fieldIds.parentComment];
+            const attachmentsValue = record.fields[commentTableConfig.fieldIds.attachments];
+            const commentTypeValue = record.fields[commentTableConfig.fieldIds.commentType];
+            
             const comment: Comment = {
               id: record.recordId,
               recordId,
-              fieldId: commentFieldId || undefined,
-              content: record.fields[commentTableConfig.fieldIds.content] || '',
-              author: Array.isArray(record.fields[commentTableConfig.fieldIds.author])
-                ? record.fields[commentTableConfig.fieldIds.author].map((u: any) => u.name).join(', ')
-                : record.fields[commentTableConfig.fieldIds.author]?.name || '未知',
-              authorId: Array.isArray(record.fields[commentTableConfig.fieldIds.author])
-                ? record.fields[commentTableConfig.fieldIds.author][0]?.id || ''
-                : record.fields[commentTableConfig.fieldIds.author]?.id || '',
-              timestamp: record.fields[commentTableConfig.fieldIds.timestamp] || Date.now(),
-              resolved: record.fields[commentTableConfig.fieldIds.resolved] || false,
-              parentId: record.fields[commentTableConfig.fieldIds.parentComment]?.recordId || undefined,
-              attachments: Array.isArray(record.fields[commentTableConfig.fieldIds.attachments])
-                ? record.fields[commentTableConfig.fieldIds.attachments].map((a: any) => a.token || a.id)
+              fieldId: fieldIdValue,
+              content: typeof contentValue === 'string' ? contentValue : String(contentValue || ''),
+              author: Array.isArray(authorValue)
+                ? authorValue.map((u: any) => (u && typeof u === 'object' && 'name' in u) ? u.name : String(u)).join(', ')
+                : (authorValue && typeof authorValue === 'object' && 'name' in authorValue) ? (authorValue as any).name : '未知',
+              authorId: Array.isArray(authorValue)
+                ? (authorValue[0] && typeof authorValue[0] === 'object' && 'id' in authorValue[0]) ? (authorValue[0] as any).id : ''
+                : (authorValue && typeof authorValue === 'object' && 'id' in authorValue) ? (authorValue as any).id : '',
+              timestamp: typeof timestampValue === 'number' ? timestampValue : (typeof timestampValue === 'string' ? parseInt(timestampValue) : Date.now()),
+              resolved: typeof resolvedValue === 'boolean' ? resolvedValue : Boolean(resolvedValue || false),
+              parentId: (parentCommentValue && typeof parentCommentValue === 'object' && 'recordId' in parentCommentValue) ? (parentCommentValue as any).recordId : undefined,
+              attachments: Array.isArray(attachmentsValue)
+                ? attachmentsValue.map((a: any) => (a && typeof a === 'object' && ('token' in a || 'id' in a)) ? (a.token || a.id) : String(a))
                 : [],
-              commentType: record.fields[commentTableConfig.fieldIds.commentType]?.text === '记录评论' ? 'record' : 'field'
+              commentType: (commentTypeValue && typeof commentTypeValue === 'object' && 'text' in commentTypeValue && (commentTypeValue as any).text === '记录评论') ? 'record' : 'field'
             };
             
             filteredComments.push(comment);
@@ -231,13 +240,13 @@ export function useCommentStorage(): UseCommentStorageResult {
     
     try {
       const commentTable = await bitable.base.getTable(commentTableConfig.tableId);
-      const userInfo = await bitable.bridge.getUserInfo();
+      const userId = await bitable.bridge.getUserId();
       
       // 构建评论记录
       const fields: Record<string, any> = {
         [commentTableConfig.fieldIds.relatedRecord]: [recordId],
         [commentTableConfig.fieldIds.content]: content,
-        [commentTableConfig.fieldIds.author]: [{ id: userInfo.userId, name: userInfo.name }],
+        [commentTableConfig.fieldIds.author]: [{ id: userId, name: '用户' }],
         [commentTableConfig.fieldIds.timestamp]: Date.now(),
         [commentTableConfig.fieldIds.resolved]: false,
         [commentTableConfig.fieldIds.commentType]: fieldId ? '字段评论' : '记录评论'
@@ -257,7 +266,7 @@ export function useCommentStorage(): UseCommentStorageResult {
       // 重新加载评论
       await loadComments(table, recordId, fieldId);
       
-      return result.recordId;
+      return (result as any).recordId || String(result);
     } catch (err: any) {
       console.error('添加评论失败:', err);
       setError(err.message || '添加评论失败');
@@ -282,12 +291,12 @@ export function useCommentStorage(): UseCommentStorageResult {
     
     try {
       const commentTable = await bitable.base.getTable(commentTableConfig.tableId);
-      const userInfo = await bitable.bridge.getUserInfo();
+      const userId = await bitable.bridge.getUserId();
       
       const fields: Record<string, any> = {
         [commentTableConfig.fieldIds.relatedRecord]: [recordId],
         [commentTableConfig.fieldIds.content]: content,
-        [commentTableConfig.fieldIds.author]: [{ id: userInfo.userId, name: userInfo.name }],
+        [commentTableConfig.fieldIds.author]: [{ id: userId, name: '用户' }],
         [commentTableConfig.fieldIds.timestamp]: Date.now(),
         [commentTableConfig.fieldIds.resolved]: false,
         [commentTableConfig.fieldIds.parentComment]: [parentCommentId],
@@ -303,7 +312,7 @@ export function useCommentStorage(): UseCommentStorageResult {
       // 重新加载评论
       await loadComments(table, recordId, fieldId);
       
-      return result.recordId;
+      return (result as any).recordId || String(result);
     } catch (err: any) {
       console.error('回复评论失败:', err);
       setError(err.message || '回复评论失败');

@@ -92,12 +92,12 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
 
         <Form className="filter-form">
           <Form.Select
+            field="fieldId"
             label="字段"
-            value={fieldId}
-            onChange={setFieldId}
+            initValue={fieldId}
+            onChange={(val) => setFieldId(val as string)}
             placeholder="选择字段"
             filter
-            showSearch
             style={{ width: '100%' }}
           >
             {fieldOptions.map(option => (
@@ -108,8 +108,9 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
           </Form.Select>
 
           <Form.Select
+            field="operator"
             label="操作符"
-            value={operator}
+            initValue={operator}
             onChange={(val) => setOperator(val as FilterCondition['operator'])}
             style={{ width: '100%' }}
           >
@@ -120,9 +121,10 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
           </Form.Select>
 
           <Form.Input
+            field="value"
             label="值"
-            value={value}
-            onChange={setValue}
+            initValue={value}
+            onChange={(val) => setValue(val as string)}
             placeholder="输入筛选值"
           />
         </Form>

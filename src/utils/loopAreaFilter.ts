@@ -18,11 +18,11 @@ export function filterRecords(
   }
   
   // 查找筛选字段：优先使用 fieldId，如果没有则使用 fieldPath（兼容旧数据）
-  let filterField = null;
+  let filterField: IFieldMeta | null = null;
   if (filter.fieldId) {
-    filterField = fields.find(f => f.id === filter.fieldId);
+    filterField = fields.find(f => f.id === filter.fieldId) || null;
   } else if (filter.fieldPath) {
-    filterField = fields.find(f => f.name === filter.fieldPath);
+    filterField = fields.find(f => f.name === filter.fieldPath) || null;
   }
   
   if (!filterField) {
@@ -31,8 +31,8 @@ export function filterRecords(
   }
   
   return records.filter(record => {
-    const fieldValue = record.fields[filterField.id];
-    return matchesCondition(fieldValue, filter, filterField.type);
+    const fieldValue = record.fields[filterField!.id];
+    return matchesCondition(fieldValue, filter, filterField!.type);
   });
 }
 

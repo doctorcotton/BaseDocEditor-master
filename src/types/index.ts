@@ -92,8 +92,9 @@ export interface FieldEditorProps {
   type: FieldType;
   value: any;
   onChange: (value: any) => void;
-  onSave: () => void;
-  onCancel: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+  onBlur?: () => void;
   fieldMeta?: IFieldMeta;
 }
 

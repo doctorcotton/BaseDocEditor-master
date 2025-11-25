@@ -213,7 +213,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
       </div>
 
       <Layout className="template-editor-body">
-        <Sider width={250} className="component-panel-sider">
+        <Sider className="component-panel-sider" style={{ width: 250 }}>
           <ComponentPanel
             onAddElement={handleAddElement}
             fields={fields}
@@ -233,7 +233,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
         </Content>
 
         {selectedElement && (
-          <Sider width={300} className="property-panel-sider">
+          <Sider className="property-panel-sider" style={{ width: 300 }}>
             <PropertyPanel
               element={selectedElement}
               fields={fields}

@@ -70,9 +70,9 @@ export const TableRowEditor: React.FC<TableRowEditorProps> = ({
           cells: row.cells.map(cell => {
             if (cell.columnId === columnId) {
               if (type === 'text') {
-                return { columnId, type: 'text', content: cell.content || '' };
+                return { columnId, type: 'text' as const, content: cell.content || '' };
               } else {
-                return { columnId, type: 'field', fieldId: cell.fieldId, fieldPath: cell.fieldPath };
+                return { columnId, type: 'field' as const, fieldId: cell.fieldId, fieldPath: cell.fieldPath };
               }
             }
             return cell;

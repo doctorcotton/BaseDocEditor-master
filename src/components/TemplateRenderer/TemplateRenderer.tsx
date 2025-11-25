@@ -687,6 +687,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
 
     const imageList = Array.isArray(attachments) ? attachments : [attachments];
     const firstImage = imageList[0];
+    const imageUrl = (firstImage && typeof firstImage === 'object' && 'url' in firstImage) ? (firstImage as any).url : undefined;
+    const imageName = (firstImage && typeof firstImage === 'object' && 'name' in firstImage) ? (firstImage as any).name : '图片';
 
     return (
       <div
@@ -697,10 +699,10 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
           height: config.height || 200
         }}
       >
-        {firstImage.url ? (
+        {imageUrl ? (
           <img
-            src={firstImage.url}
-            alt={firstImage.name || '图片'}
+            src={imageUrl}
+            alt={imageName}
             style={{
               width: '100%',
               height: '100%',
