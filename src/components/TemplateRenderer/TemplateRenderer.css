@@ -59,11 +59,35 @@
   position: relative;
 }
 
+.template-field.field-editable {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.template-field.field-editable:hover {
+  background: var(--semi-color-fill-0);
+  border-color: var(--semi-color-primary-light-active);
+}
+
+.template-field.field-editing {
+  background: var(--semi-color-fill-0);
+  border: 1px solid var(--semi-color-primary);
+  padding: 12px;
+}
+
 .field-content {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
+}
+
+.field-editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
 .field-label {
@@ -167,6 +191,31 @@
 
 .table-cell-comment-badge:hover {
   opacity: 1;
+}
+
+/* 表格单元格编辑 */
+.table-cell-field {
+  min-height: 24px;
+  padding: 4px 0;
+}
+
+.table-cell-editable {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.table-cell-editable:hover {
+  background-color: var(--semi-color-fill-0);
+}
+
+.table-cell-editing {
+  min-width: 150px;
+}
+
+.table-cell-empty {
+  color: var(--semi-color-text-2);
+  font-style: italic;
 }
 
 /* 图片 */

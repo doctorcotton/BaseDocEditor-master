@@ -3,10 +3,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { IRecord, IFieldMeta } from '@lark-base-open/js-sdk';
+import { IRecord, IFieldMeta, bitable } from '@lark-base-open/js-sdk';
 import { TemplateElement } from '../../types/template';
 import { getLinkedRecords, filterRecords } from '../../utils/loopAreaFilter';
 import { TemplateRenderer } from './TemplateRenderer';
+import { LoopTableRenderer } from './LoopTableRenderer';
 import './TemplateRenderer.css';
 
 interface LoopAreaRendererProps {
@@ -16,6 +17,7 @@ interface LoopAreaRendererProps {
   table: any;
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
+  onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
 }
 
 export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
@@ -24,9 +26,12 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
   fields,
   table,
   onComment,
-  commentStats
+  commentStats,
+  onFieldChange
 }) => {
   const [linkedRecords, setLinkedRecords] = useState<IRecord[]>([]);
+  const [linkedFields, setLinkedFields] = useState<IFieldMeta[]>([]);
+  const [linkedTable, setLinkedTable] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const config = element.config as any;
@@ -40,22 +45,55 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
   const loadLinkedRecords = async () => {
     if (!fieldId) {
       setLinkedRecords([]);
+      setLinkedFields([]);
+      setLinkedTable(null);
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
+      console.log('[LoopAreaRenderer] 开始加载关联记录', { fieldId, recordId: record.recordId });
+      
       // 获取关联记录
       const records = await getLinkedRecords(table, record.recordId, fieldId);
+      console.log('[LoopAreaRenderer] 获取到关联记录', { count: records.length, records: records.map(r => r.recordId) });
       
-      // 应用筛选条件
-      const filtered = filter ? filterRecords(records, filter, fields) : records;
+      // 获取关联表的字段和表实例（用于筛选和渲染）
+      let linkedTableFields: IFieldMeta[] = [];
+      let linkedTableInstance: any = null;
+      if (table) {
+        try {
+          const field = await table.getFieldById(fieldId);
+          const fieldMeta = await field.getMeta();
+          const linkedTableId = fieldMeta.property?.tableId;
+          console.log('[LoopAreaRenderer] 关联表ID:', linkedTableId);
+          if (linkedTableId) {
+            // 使用 bitable.base 获取关联表
+            linkedTableInstance = await bitable.base.getTable(linkedTableId);
+            linkedTableFields = await linkedTableInstance.getFieldMetaList();
+            console.log('[LoopAreaRenderer] 获取关联表字段', { count: linkedTableFields.length, fields: linkedTableFields.map(f => f.name) });
+          }
+        } catch (error) {
+          console.error('[LoopAreaRenderer] 获取关联表字段失败:', error);
+        }
+      }
       
+      setLinkedFields(linkedTableFields);
+      setLinkedTable(linkedTableInstance);
+      
+      // 应用筛选条件（使用关联表的字段）
+      const filtered = filter && linkedTableFields.length > 0 
+        ? filterRecords(records, filter, linkedTableFields) 
+        : records;
+      
+      console.log('[LoopAreaRenderer] 筛选后的记录', { count: filtered.length, filtered: filtered.map(r => r.recordId) });
       setLinkedRecords(filtered);
     } catch (error) {
-      console.error('加载关联记录失败:', error);
+      console.error('[LoopAreaRenderer] 加载关联记录失败:', error);
       setLinkedRecords([]);
+      setLinkedFields([]);
+      setLinkedTable(null);
     } finally {
       setLoading(false);
     }
@@ -77,28 +115,68 @@ export const LoopAreaRenderer: React.FC<LoopAreaRendererProps> = ({
     );
   }
 
+  // 检查子模板是否是表格，如果是表格，需要特殊处理：将所有关联记录作为表格数据源
+  const hasTableTemplate = config.template && config.template.some((el: TemplateElement) => el.type === 'table');
+  
+  if (hasTableTemplate && linkedRecords.length > 0) {
+    // 如果子模板包含表格，渲染一个汇总表格，所有关联记录作为数据源
+    return (
+      <div className="template-element template-loop">
+        {config.template.map((subElement: TemplateElement) => {
+          if (subElement.type === 'table') {
+            // 对于表格，传递所有关联记录作为数据源
+            return (
+              <LoopTableRenderer
+                key={subElement.id}
+                element={subElement}
+                records={linkedRecords}
+                fields={linkedFields.length > 0 ? linkedFields : fields}
+                table={linkedTable || table}
+                onComment={onComment}
+                commentStats={commentStats}
+              />
+            );
+          } else {
+            // 其他类型的元素，为每条记录渲染一次
+            return (
+              <div key={subElement.id}>
+                {linkedRecords.map((linkedRecord: IRecord, index: number) => (
+                  <TemplateRenderer
+                    key={`${subElement.id}-${linkedRecord.recordId || index}`}
+                    template={{ ...element, elements: [subElement] } as any}
+                    record={linkedRecord}
+                    fields={linkedFields.length > 0 ? linkedFields : fields}
+                    table={linkedTable || table}
+                    onComment={onComment}
+                    commentStats={commentStats}
+                    onFieldChange={onFieldChange}
+                  />
+                ))}
+              </div>
+            );
+          }
+        })}
+      </div>
+    );
+  }
+
+  // 默认行为：为每条记录渲染子模板
   return (
-    <div
-      className="template-element template-loop"
-      style={{
-        position: 'absolute',
-        left: element.position.x,
-        top: element.position.y
-      }}
-    >
+    <div className="template-element template-loop">
       {linkedRecords.map((linkedRecord: IRecord, index: number) => (
         <div key={linkedRecord.recordId || index} className="loop-item">
           {config.template && config.template.length > 0 ? (
-            // 递归渲染循环区域内的模板元素
+            // 递归渲染循环区域内的模板元素（使用关联表的字段和表实例）
             config.template.map((subElement: TemplateElement) => (
               <TemplateRenderer
                 key={subElement.id}
                 template={{ ...element, elements: [subElement] } as any}
                 record={linkedRecord}
-                fields={fields}
-                table={table}
+                fields={linkedFields.length > 0 ? linkedFields : fields}
+                table={linkedTable || table}
                 onComment={onComment}
                 commentStats={commentStats}
+                onFieldChange={onFieldChange}
               />
             ))
           ) : (

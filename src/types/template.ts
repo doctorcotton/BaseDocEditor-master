@@ -74,7 +74,8 @@ export interface LoopAreaConfig {
  * 筛选条件
  */
 export interface FilterCondition {
-  fieldPath: string; // 筛选字段路径
+  fieldId?: string; // 筛选字段ID（优先使用）
+  fieldPath?: string; // 筛选字段路径（已废弃，仅用于兼容）
   operator: 'equals' | 'notEquals' | 'contains' | 'notContains'; // 操作符
   value: any; // 筛选值
 }
@@ -85,10 +86,11 @@ export interface FilterCondition {
 export interface TableElementConfig {
   columns: TableColumn[];
   rows?: TableRow[]; // 行配置（用于静态多行表格）
-  dataSource?: 'static' | 'dynamic'; // 数据来源：static=配置的行，dynamic=记录字段
+  dataSource?: 'static' | 'dynamic' | 'loop'; // 数据来源：static=配置的行，dynamic=记录字段，loop=循环区域的关联记录
   showHeader?: boolean; // 是否显示表头
   bordered?: boolean; // 是否显示边框
   canWriteback: boolean; // 是否支持反写
+  columnConfig?: Record<string, { type: 'concat'; fields: string[]; separator?: string }>; // 列配置，用于字段拼接等
 }
 
 /**

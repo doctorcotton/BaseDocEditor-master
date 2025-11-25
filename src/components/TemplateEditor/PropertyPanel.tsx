@@ -154,7 +154,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 <Button
                   onClick={() => handleOpenFieldSelector('field')}
                   style={{ flex: 1 }}
-                >
+              >
                   {selectedField ? selectedField.name : '点击选择字段'}
                 </Button>
                 {selectedField && (

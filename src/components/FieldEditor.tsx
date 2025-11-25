@@ -12,17 +12,18 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   type,
   value,
   onChange,
-  onSave,
-  onCancel,
+  onBlur,
   fieldMeta
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && type === FieldType.Text) {
+      // 文本类型按 Enter 键时触发 onBlur（自动保存）
       e.preventDefault();
-      onSave();
+      onBlur?.();
     } else if (e.key === 'Escape') {
+      // ESC 键退出编辑（不保存）
       e.preventDefault();
-      onCancel();
+      onBlur?.();
     }
   };
 
@@ -35,6 +36,7 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
             value={value || ''}
             onChange={(val) => onChange(val)}
             onKeyDown={handleKeyDown}
+            onBlur={onBlur}
             autoFocus
             placeholder="输入文本..."
           />
@@ -48,6 +50,7 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
             value={value}
             onChange={(val) => onChange(val)}
             onKeyDown={handleKeyDown}
+            onBlur={onBlur}
             autoFocus
             style={{ width: '100%' }}
           />
@@ -131,6 +134,7 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
             value={String(value || '')}
             onChange={(val) => onChange(val)}
             onKeyDown={handleKeyDown}
+            onBlur={onBlur}
             autoFocus
             placeholder="输入内容..."
           />
@@ -141,14 +145,6 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {renderEditor()}
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-        <Button size="small" onClick={onCancel}>
-          取消
-        </Button>
-        <Button size="small" type="primary" onClick={onSave}>
-          保存
-        </Button>
-      </div>
     </div>
   );
 };

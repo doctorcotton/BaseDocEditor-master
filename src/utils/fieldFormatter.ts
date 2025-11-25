@@ -16,13 +16,35 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
   // 处理对象类型，避免显示 [object Object]
   if (typeof value === 'object' && !Array.isArray(value)) {
     // 尝试提取常见的显示字段
-    if (value.text) return String(value.text);
-    if (value.name) return String(value.name);
-    if (value.en_name) return String(value.en_name);
-    if (value.title) return String(value.title);
-    if (value.label) return String(value.label);
+    if (value.text !== undefined && value.text !== null) return String(value.text);
+    if (value.name !== undefined && value.name !== null) return String(value.name);
+    if (value.en_name !== undefined && value.en_name !== null) return String(value.en_name);
+    if (value.title !== undefined && value.title !== null) return String(value.title);
+    if (value.label !== undefined && value.label !== null) return String(value.label);
+    // 尝试获取第一个可用的字符串属性
+    for (const key in value) {
+      if (value.hasOwnProperty(key)) {
+        const propValue = value[key];
+        if (typeof propValue === 'string' && propValue.trim()) {
+          return propValue;
+        }
+        if (typeof propValue === 'number') {
+          return String(propValue);
+        }
+      }
+    }
     // 如果是空对象，返回空字符串
     if (Object.keys(value).length === 0) return '';
+    // 最后尝试JSON序列化，但只取前100个字符
+    try {
+      const jsonStr = JSON.stringify(value);
+      if (jsonStr.length > 100) {
+        return jsonStr.substring(0, 100) + '...';
+      }
+      return jsonStr;
+    } catch {
+      return '';
+    }
   }
 
   switch (fieldType) {
@@ -31,6 +53,15 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
     case FieldType.Email:
     case FieldType.Phone:
     case FieldType.Url:
+      // 处理数组类型的文本值（多行文本可能返回数组）
+      if (Array.isArray(value)) {
+        return value.map(v => {
+          if (typeof v === 'object' && v !== null) {
+            return v.text || v.name || v.value || '';
+          }
+          return String(v || '');
+        }).filter(Boolean).join('\n');
+      }
       return String(value || '');
 
     case FieldType.Number:
@@ -120,10 +151,32 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
     case FieldType.Lookup:
       // 公式和查找引用字段可能返回各种类型
       if (Array.isArray(value)) {
-        return value.map(v => formatFieldValue(v, FieldType.Text)).join(', ');
+        return value.map(v => formatFieldValue(v, FieldType.Text)).filter(Boolean).join(', ');
       }
-      if (typeof value === 'object') {
-        return value.text || value.name || JSON.stringify(value);
+      if (typeof value === 'object' && value !== null) {
+        // 优先尝试常见属性
+        if (value.text !== undefined && value.text !== null) return String(value.text);
+        if (value.name !== undefined && value.name !== null) return String(value.name);
+        if (value.value !== undefined && value.value !== null) return String(value.value);
+        // 尝试获取第一个字符串或数字属性
+        for (const key in value) {
+          if (value.hasOwnProperty(key)) {
+            const propValue = value[key];
+            if (typeof propValue === 'string' && propValue.trim()) {
+              return propValue;
+            }
+            if (typeof propValue === 'number') {
+              return String(propValue);
+            }
+          }
+        }
+        // 最后尝试JSON序列化
+        try {
+          const jsonStr = JSON.stringify(value);
+          return jsonStr.length > 200 ? jsonStr.substring(0, 200) + '...' : jsonStr;
+        } catch {
+          return '';
+        }
       }
       return String(value || '');
 
@@ -131,14 +184,36 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
       // 默认处理：尝试转换为字符串
       if (Array.isArray(value)) {
         return value.map(v => {
-          if (typeof v === 'object') {
+          if (typeof v === 'object' && v !== null) {
             return v.text || v.name || v.label || '';
           }
           return String(v);
         }).filter(Boolean).join(', ');
       }
-      if (typeof value === 'object') {
-        return value.text || value.name || value.label || JSON.stringify(value);
+      if (typeof value === 'object' && value !== null) {
+        // 优先尝试常见属性
+        if (value.text !== undefined && value.text !== null) return String(value.text);
+        if (value.name !== undefined && value.name !== null) return String(value.name);
+        if (value.label !== undefined && value.label !== null) return String(value.label);
+        // 尝试获取第一个字符串或数字属性
+        for (const key in value) {
+          if (value.hasOwnProperty(key)) {
+            const propValue = value[key];
+            if (typeof propValue === 'string' && propValue.trim()) {
+              return propValue;
+            }
+            if (typeof propValue === 'number') {
+              return String(propValue);
+            }
+          }
+        }
+        // 最后尝试JSON序列化
+        try {
+          const jsonStr = JSON.stringify(value);
+          return jsonStr.length > 200 ? jsonStr.substring(0, 200) + '...' : jsonStr;
+        } catch {
+          return '';
+        }
       }
       return String(value || '');
   }
@@ -186,5 +261,99 @@ export function getFieldTypeName(fieldType: FieldType): string {
   };
   
   return typeNames[fieldType] || '未知';
+}
+
+/**
+ * 规范化字段值，确保符合多维表格 API 的要求
+ * @param value 原始值
+ * @param fieldType 字段类型
+ * @param fieldMeta 字段元数据（用于选项类型）
+ */
+export function normalizeFieldValue(value: any, fieldType: FieldType, fieldMeta?: any): any {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  switch (fieldType) {
+    case FieldType.Text:
+    case FieldType.Barcode:
+    case FieldType.Email:
+    case FieldType.Phone:
+    case FieldType.Url:
+      // 文本类型：直接返回字符串
+      return String(value || '');
+
+    case FieldType.Number:
+    case FieldType.Currency:
+    case FieldType.Progress:
+      // 数字类型：返回数字
+      return typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+
+    case FieldType.DateTime:
+      // 日期时间类型：返回时间戳（毫秒）
+      if (typeof value === 'number') {
+        return value;
+      }
+      if (value instanceof Date) {
+        return value.getTime();
+      }
+      if (typeof value === 'string') {
+        const timestamp = Date.parse(value);
+        return isNaN(timestamp) ? null : timestamp;
+      }
+      return null;
+
+    case FieldType.SingleSelect:
+      // 单选类型：需要返回选项对象或选项ID
+      if (typeof value === 'string') {
+        // 如果是字符串，尝试从选项中查找
+        const options = (fieldMeta?.property as any)?.options || [];
+        const option = options.find((opt: any) => opt.id === value || opt.name === value);
+        return option || value;
+      }
+      if (value && typeof value === 'object') {
+        // 如果已经是对象，确保有 id 和 name
+        if (value.id) {
+          return value;
+        }
+        // 如果没有 id，尝试从选项中查找
+        const options = (fieldMeta?.property as any)?.options || [];
+        const option = options.find((opt: any) => opt.name === value.name || opt.text === value.text);
+        return option || value;
+      }
+      return value;
+
+    case FieldType.MultiSelect:
+      // 多选类型：需要返回选项对象数组
+      if (!Array.isArray(value)) {
+        return [];
+      }
+      const options = (fieldMeta?.property as any)?.options || [];
+      return value.map((v: any) => {
+        if (typeof v === 'string') {
+          // 如果是字符串，尝试从选项中查找
+          const option = options.find((opt: any) => opt.id === v || opt.name === v);
+          return option || v;
+        }
+        if (v && typeof v === 'object') {
+          // 如果已经是对象，确保有 id
+          if (v.id) {
+            return v;
+          }
+          // 如果没有 id，尝试从选项中查找
+          const option = options.find((opt: any) => opt.name === v.name || opt.text === v.text);
+          return option || v;
+        }
+        return v;
+      }).filter(Boolean);
+
+    case FieldType.Checkbox:
+      // 复选框类型：返回布尔值
+      return !!value;
+
+    default:
+      // 其他类型：直接返回原值
+      return value;
+  }
 }
 

@@ -71,8 +71,8 @@ export function useTemplateStorage(): UseTemplateStorageResult {
           
           if (contentCell && typeof contentCell === 'string') {
             const template = deserializeTemplate(contentCell);
-            if (template) {
-              loadedTemplates.push(template);
+        if (template) {
+          loadedTemplates.push(template);
             }
           }
         } catch (err) {
@@ -119,7 +119,7 @@ export function useTemplateStorage(): UseTemplateStorageResult {
         ...template,
         updatedAt: Date.now()
       };
-
+      
       // 序列化模板内容
       console.log('[TemplateStorage] serializing template...');
       const serializedContent = serializeTemplate(updatedTemplate);

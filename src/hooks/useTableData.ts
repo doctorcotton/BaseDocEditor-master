@@ -84,10 +84,14 @@ export function useTableData(): UseTableDataResult {
       console.log('[useTableData] 表格列表:', tableList);
       setTables(tableList.map(t => ({ id: t.id, name: t.name })));
       
-      // 默认选择第一个表格
+      // 固定默认表格ID：原料标准管理
+      const defaultTableId = 'tblOKBfwUeTiKHxa';
+      
+      // 优先选择固定表格，如果不存在则选择第一个表格
       if (tableList.length > 0) {
-        console.log('[useTableData] 自动选择第一个表格:', tableList[0].id);
-        await selectTable(tableList[0].id);
+        const targetTable = tableList.find(t => t.id === defaultTableId) || tableList[0];
+        console.log('[useTableData] 自动选择表格:', targetTable.id, targetTable.name);
+        await selectTable(targetTable.id);
       }
     } catch (err: any) {
       console.error('[useTableData] 加载表格列表失败:', err);

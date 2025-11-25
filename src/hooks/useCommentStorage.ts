@@ -49,20 +49,20 @@ export function useCommentStorage(): UseCommentStorageResult {
         console.log('[CommentStorage] comment table not found, attempting to create...');
         
         try {
-          commentTable = await base.addTable({
-            name: 'BaseDocEditor_评论',
-            fields: [
-              { name: '关联记录', type: 18 }, // SingleLink
-              { name: '关联字段ID', type: 1 }, // Text
-              { name: '评论内容', type: 1 }, // Text
-              { name: '评论者', type: 11 }, // User
-              { name: '评论时间', type: 5 }, // DateTime
-              { name: '父评论记录', type: 18 }, // SingleLink (指向评论表格自身)
-              { name: '已解决', type: 7 }, // Checkbox
-              { name: '评论类型', type: 3, options: [{ name: '字段评论' }, { name: '记录评论' }] }, // SingleSelect
-              { name: '附件', type: 17 } // Attachment
-            ]
-          });
+        commentTable = await base.addTable({
+          name: 'BaseDocEditor_评论',
+          fields: [
+            { name: '关联记录', type: 18 }, // SingleLink
+            { name: '关联字段ID', type: 1 }, // Text
+            { name: '评论内容', type: 1 }, // Text
+            { name: '评论者', type: 11 }, // User
+            { name: '评论时间', type: 5 }, // DateTime
+            { name: '父评论记录', type: 18 }, // SingleLink (指向评论表格自身)
+            { name: '已解决', type: 7 }, // Checkbox
+            { name: '评论类型', type: 3, options: [{ name: '字段评论' }, { name: '记录评论' }] }, // SingleSelect
+            { name: '附件', type: 17 } // Attachment
+          ]
+        });
           isNewTable = true;
           console.log('[CommentStorage] Comment table created successfully');
         } catch (createErr: any) {

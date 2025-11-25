@@ -3,13 +3,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { ITable } from '@lark-base-open/js-sdk';
+import { ITable, IFieldMeta } from '@lark-base-open/js-sdk';
 import { FieldChange, SyncResult } from '../types';
+import { normalizeFieldValue } from '../utils/fieldFormatter';
 
 export interface UseDocumentSyncResult {
   syncing: boolean;
   syncResult: SyncResult | null;
-  syncChanges: (table: ITable, changes: FieldChange[]) => Promise<boolean>;
+  syncChanges: (table: ITable, changes: FieldChange[], fields?: IFieldMeta[]) => Promise<boolean>;
   clearSyncResult: () => void;
 }
 
@@ -25,7 +26,8 @@ export function useDocumentSync(): UseDocumentSyncResult {
    */
   const syncChanges = useCallback(async (
     table: ITable,
-    changes: FieldChange[]
+    changes: FieldChange[],
+    fields?: IFieldMeta[]
   ): Promise<boolean> => {
     if (changes.length === 0) {
       return false;
@@ -42,7 +44,18 @@ export function useDocumentSync(): UseDocumentSyncResult {
         if (!recordChanges.has(change.recordId)) {
           recordChanges.set(change.recordId, {});
         }
-        recordChanges.get(change.recordId)![change.fieldId] = change.newValue;
+        
+        // 查找字段元数据
+        const fieldMeta = fields?.find(f => f.id === change.fieldId);
+        
+        // 规范化字段值
+        const normalizedValue = normalizeFieldValue(
+          change.newValue,
+          fieldMeta?.type || 1, // 默认为文本类型
+          fieldMeta
+        );
+        
+        recordChanges.get(change.recordId)![change.fieldId] = normalizedValue;
       }
       
       // 批量更新记录

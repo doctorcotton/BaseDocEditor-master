@@ -2,7 +2,7 @@
  * 循环区域筛选逻辑
  */
 
-import { IRecord, IFieldMeta, FieldType } from '@lark-base-open/js-sdk';
+import { IRecord, IFieldMeta, FieldType, bitable } from '@lark-base-open/js-sdk';
 import { FilterCondition } from '../types/template';
 
 /**
@@ -17,10 +17,16 @@ export function filterRecords(
     return records;
   }
   
-  // 查找筛选字段
-  const filterField = fields.find(f => f.name === filter.fieldPath);
+  // 查找筛选字段：优先使用 fieldId，如果没有则使用 fieldPath（兼容旧数据）
+  let filterField = null;
+  if (filter.fieldId) {
+    filterField = fields.find(f => f.id === filter.fieldId);
+  } else if (filter.fieldPath) {
+    filterField = fields.find(f => f.name === filter.fieldPath);
+  }
+  
   if (!filterField) {
-    console.warn('筛选字段不存在:', filter.fieldPath);
+    console.warn('筛选字段不存在:', filter.fieldId || filter.fieldPath);
     return records;
   }
   
@@ -77,8 +83,10 @@ function isEqual(value: any, conditionValue: any, fieldType: FieldType): boolean
       return Number(value) === Number(conditionValue);
       
     case FieldType.SingleSelect:
-      const selectText = value?.text || value?.name || '';
-      return selectText === String(conditionValue);
+      // 处理单选字段：支持对象和字符串比较
+      const selectValue = value?.id || value?.text || value?.name || value || '';
+      const conditionSelectValue = conditionValue?.id || conditionValue?.text || conditionValue?.name || conditionValue || '';
+      return String(selectValue) === String(conditionSelectValue);
       
     case FieldType.MultiSelect:
       if (Array.isArray(value)) {
@@ -174,11 +182,11 @@ export async function getLinkedRecords(
       return [];
     }
     
-    const recordId = typeof linkValue === 'string' ? linkValue : linkValue.recordId || linkValue.id;
-    const recordValue = await linkedTable.getRecordById(recordId);
+    const linkedRecordId = typeof linkValue === 'string' ? linkValue : linkValue.recordId || linkValue.id;
+    const recordValue = await linkedTable.getRecordById(linkedRecordId);
     
     return [{
-      recordId,
+      recordId: linkedRecordId,
       fields: recordValue
     }];
   } catch (error) {
@@ -198,13 +206,14 @@ async function getLinkedTable(table: any, linkFieldId: string): Promise<any> {
     // 获取关联表的ID
     const linkedTableId = fieldMeta.property?.tableId;
     if (!linkedTableId) {
+      console.warn('[getLinkedTable] 未找到关联表ID', { linkFieldId, fieldMeta });
       return null;
     }
     
-    const base = await table.getBase();
-    return await base.getTable(linkedTableId);
+    // 使用 bitable.base 获取关联表
+    return await bitable.base.getTable(linkedTableId);
   } catch (error) {
-    console.error('获取关联表失败:', error);
+    console.error('[getLinkedTable] 获取关联表失败:', error);
     return null;
   }
 }

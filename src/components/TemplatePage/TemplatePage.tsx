@@ -13,6 +13,8 @@ import { TemplateRenderer } from '../TemplateRenderer/TemplateRenderer';
 import { useTemplateStorage } from '../../hooks/useTemplateStorage';
 import { CommentPanel } from '../CommentPanel/CommentPanel';
 import { useCommentStorage } from '../../hooks/useCommentStorage';
+import { useDocumentSync } from '../../hooks/useDocumentSync';
+import { FieldChange } from '../../types';
 import { DEFAULT_TEMPLATE } from '../../config/defaultTemplate';
 import './TemplatePage.css';
 
@@ -41,6 +43,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
   const [commentFieldId, setCommentFieldId] = useState<string | undefined>(undefined);
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [recordName, setRecordName] = useState<string>('未命名记录');
 
   const {
     templates,
@@ -61,8 +64,53 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     error: commentError
   } = useCommentStorage();
 
+  const {
+    syncing,
+    syncResult,
+    syncChanges,
+    clearSyncResult
+  } = useDocumentSync();
+
   // 评论统计
   const commentStats = new Map<string, { total: number; unresolved: number }>();
+  
+  // 待同步的字段变更
+  const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
+
+  // 加载记录名称（标准名称字段）
+  useEffect(() => {
+    const loadRecordName = async () => {
+      const standardNameFieldId = 'fld3g1HhuN'; // 标准名称字段ID
+      
+      // 先从 record.fields 读取
+      let nameValue = record.fields?.[standardNameFieldId];
+      
+      // 如果没有，使用 getCellValue 异步获取
+      if ((nameValue === undefined || nameValue === null) && table) {
+        try {
+          nameValue = await table.getCellValue(standardNameFieldId, record.recordId);
+        } catch (error) {
+          console.error('[TemplatePage] 加载记录名称失败:', error);
+        }
+      }
+      
+      // 格式化显示值
+      if (nameValue !== undefined && nameValue !== null) {
+        const field = fields.find(f => f.id === standardNameFieldId);
+        if (field) {
+          const { formatFieldValue } = await import('../../utils/fieldFormatter');
+          const formatted = formatFieldValue(nameValue, field.type);
+          setRecordName(formatted || '未命名记录');
+        } else {
+          setRecordName(String(nameValue) || '未命名记录');
+        }
+      } else {
+        setRecordName('未命名记录');
+      }
+    };
+    
+    loadRecordName();
+  }, [record, fields, table]);
 
   useEffect(() => {
     // 初始化模板表和评论表
@@ -175,7 +223,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     const copied = copyTemplate(template, `${template.name} (副本)`);
     const success = await saveTemplate(copied);
     if (success) {
-      setSelectedTemplate(copied);
+    setSelectedTemplate(copied);
       Toast.success('模板已复制');
       await loadTemplates();
     } else {
@@ -225,9 +273,9 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
       
       if (success) {
         console.log('[TemplatePage] save success, updating UI...');
-        setEditingTemplate(null);
-        setSelectedTemplate(template);
-        setActiveTab('preview');
+    setEditingTemplate(null);
+    setSelectedTemplate(template);
+    setActiveTab('preview');
         Toast.success('模板保存成功');
         
         // 重新加载模板列表
@@ -252,6 +300,67 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
     setShowCommentPanel(true);
   };
 
+  // 处理字段变更
+  const handleFieldChange = async (fieldId: string, newValue: any, oldValue: any) => {
+    const field = fields.find(f => f.id === fieldId);
+    if (!field) {
+      console.warn('[TemplatePage] Field not found:', fieldId);
+      return;
+    }
+
+    // 创建字段变更记录
+    const change: FieldChange = {
+      recordId: record.recordId,
+      fieldId: fieldId,
+      fieldName: field.name,
+      oldValue: oldValue,
+      newValue: newValue,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+
+    // 添加到待同步列表
+    setPendingChanges(prev => {
+      // 检查是否已有该字段的变更，如果有则更新，否则添加
+      const index = prev.findIndex(c => c.recordId === change.recordId && c.fieldId === change.fieldId);
+      if (index >= 0) {
+        const updated = [...prev];
+        updated[index] = change;
+        return updated;
+      }
+      return [...prev, change];
+    });
+
+    // 立即同步到多维表格
+    try {
+      const success = await syncChanges(table, [change], fields);
+      if (success) {
+        // 更新变更状态
+        setPendingChanges(prev => 
+          prev.map(c => 
+            c.recordId === change.recordId && c.fieldId === change.fieldId
+              ? { ...c, status: 'synced' as const }
+              : c
+          )
+        );
+        Toast.success(`字段"${field.name}"已更新`);
+      } else {
+        // 更新变更状态为失败
+        setPendingChanges(prev => 
+          prev.map(c => 
+            c.recordId === change.recordId && c.fieldId === change.fieldId
+              ? { ...c, status: 'failed' as const }
+              : c
+          )
+        );
+        Toast.error(`字段"${field.name}"更新失败`);
+      }
+    } catch (error: any) {
+      console.error('[TemplatePage] 同步字段变更失败:', error);
+      Toast.error(`同步失败: ${error.message || '未知错误'}`);
+    }
+  };
+
   return (
     <Layout className="template-page">
       {/* 顶部导航栏 */}
@@ -261,7 +370,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
             ← 返回
           </Button>
           <Title heading={4} style={{ margin: '0 0 0 16px' }}>
-            {record.fields[fields[0]?.id] ? String(record.fields[fields[0]?.id]) : '未命名记录'}
+            {recordName}
           </Title>
         </div>
         <div className="header-right">
@@ -364,16 +473,16 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
         <Content className="template-content">
           {activeTab === 'edit' ? (
             editingTemplate ? (
-              <TemplateEditor
-                template={editingTemplate}
-                fields={fields}
-                onSave={handleSaveTemplate}
-                onCopy={(template) => handleCopyTemplate(template)}
-                onCancel={() => {
-                  setEditingTemplate(null);
-                  setActiveTab('preview');
-                }}
-              />
+            <TemplateEditor
+              template={editingTemplate}
+              fields={fields}
+              onSave={handleSaveTemplate}
+              onCopy={(template) => handleCopyTemplate(template)}
+              onCancel={() => {
+                setEditingTemplate(null);
+                setActiveTab('preview');
+              }}
+            />
             ) : selectedTemplate ? (
               <TemplateEditor
                 template={selectedTemplate}
@@ -397,6 +506,7 @@ export const TemplatePage: React.FC<TemplatePageProps> = ({
               table={table}
               onComment={handleOpenComment}
               commentStats={commentStats}
+              onFieldChange={handleFieldChange}
             />
           ) : (
             <div className="template-empty">

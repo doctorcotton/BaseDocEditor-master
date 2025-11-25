@@ -23,7 +23,19 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
   onConfirm,
   onCancel
 }) => {
-  const [fieldPath, setFieldPath] = useState(filter?.fieldPath || '');
+  // 优先使用 fieldId，如果没有则从 fieldPath 查找对应的 fieldId（兼容旧数据）
+  const getInitialFieldId = () => {
+    if (filter?.fieldId) {
+      return filter.fieldId;
+    }
+    if (filter?.fieldPath) {
+      const field = fields.find(f => f.name === filter.fieldPath);
+      return field?.id || '';
+    }
+    return '';
+  };
+
+  const [fieldId, setFieldId] = useState(getInitialFieldId());
   const [operator, setOperator] = useState<FilterCondition['operator']>(
     filter?.operator || 'equals'
   );
@@ -31,52 +43,35 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
 
   useEffect(() => {
     if (filter) {
-      setFieldPath(filter.fieldPath);
+      const id = filter.fieldId || (filter.fieldPath ? fields.find(f => f.name === filter.fieldPath)?.id : '') || '';
+      setFieldId(id);
       setOperator(filter.operator);
       setValue(filter.value);
     } else {
-      setFieldPath('');
+      setFieldId('');
       setOperator('equals');
       setValue('');
     }
-  }, [filter, visible]);
+  }, [filter, visible, fields]);
 
   const handleConfirm = () => {
-    if (!fieldPath) {
+    if (!fieldId) {
       return;
     }
 
     onConfirm({
-      fieldPath,
+      fieldId,
       operator,
       value
     });
   };
 
-  // 构建字段树（支持关联字段）
-  const buildFieldTree = (fields: IFieldMeta[]): Array<{ label: string; value: string; type: number }> => {
-    const result: Array<{ label: string; value: string; type: number }> = [];
-    
-    fields.forEach(field => {
-      // 添加当前字段
-      result.push({
-        label: field.name,
-        value: field.name,
+  // 构建字段选项（使用 fieldId）
+  const fieldOptions = fields.map(field => ({
+    label: `${field.name} (${getFieldTypeName(field.type)})`,
+    value: field.id,
         type: field.type
-      });
-
-      // 如果是关联字段，可以添加关联表的字段（这里简化处理）
-      if (field.type === 18 || field.type === 21) { // SingleLink or DuplexLink
-        // 关联字段的嵌套字段可以通过 fieldPath 格式访问
-        // 例如: "关联字段.嵌套字段"
-        // 这里暂时不展开，用户可以直接输入路径
-      }
-    });
-
-    return result;
-  };
-
-  const fieldOptions = buildFieldTree(fields);
+  }));
 
   return (
     <Modal
@@ -85,7 +80,7 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
       onOk={handleConfirm}
       onCancel={onCancel}
       width={600}
-      okButtonProps={{ disabled: !fieldPath }}
+      okButtonProps={{ disabled: !fieldId }}
     >
       <div className="loop-area-filter">
         <div className="filter-description">
@@ -98,8 +93,8 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
         <Form className="filter-form">
           <Form.Select
             label="字段"
-            value={fieldPath}
-            onChange={setFieldPath}
+            value={fieldId}
+            onChange={setFieldId}
             placeholder="选择字段"
             filter
             showSearch
@@ -107,7 +102,7 @@ export const LoopAreaFilter: React.FC<LoopAreaFilterProps> = ({
           >
             {fieldOptions.map(option => (
               <Select.Option key={option.value} value={option.value}>
-                {option.label} ({getFieldTypeName(option.type)})
+                {option.label}
               </Select.Option>
             ))}
           </Form.Select>

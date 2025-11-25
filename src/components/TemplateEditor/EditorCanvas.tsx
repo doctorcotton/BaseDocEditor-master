@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { Card, Button, Dropdown } from '@douyinfe/semi-ui';
+import { Card, Button, Dropdown, Input } from '@douyinfe/semi-ui';
 import { IconDelete, IconEdit, IconPlus, IconHandle } from '@douyinfe/semi-icons';
 import { Template, TemplateElement } from '../../types/template';
 import './TemplateEditor.css';
@@ -32,6 +32,8 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [pendingElementType, setPendingElementType] = useState<TemplateElement['type'] | null>(null);
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
 
   // 添加元素菜单
   const addElementMenu = [
@@ -119,23 +121,60 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
     }
   };
 
+  // 开始编辑文本
+  const handleStartEdit = (element: TemplateElement) => {
+    if (element.type === 'text') {
+      setEditingElementId(element.id);
+      setEditingValue((element.config as any).content || '');
+    }
+  };
+
+  // 保存编辑
+  const handleSaveEdit = () => {
+    if (editingElementId) {
+      onUpdateElement(editingElementId, {
+        config: {
+          ...template.elements.find(el => el.id === editingElementId)?.config,
+          content: editingValue
+        }
+      });
+      setEditingElementId(null);
+      setEditingValue('');
+    }
+  };
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    setEditingElementId(null);
+    setEditingValue('');
+  };
+
   // 渲染元素
   const renderElement = (element: TemplateElement, index: number) => {
     const isSelected = selectedElement?.id === element.id;
     const isDragging = draggedIndex === index;
     const isDragOver = dragOverIndex === index;
+    const isEditing = editingElementId === element.id;
 
     return (
       <div
         key={element.id}
         className={`canvas-element-flow ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
-        draggable
-        onDragStart={(e) => handleDragStart(e, index)}
-        onDragOver={(e) => handleDragOver(e, index)}
-        onDrop={(e) => handleDrop(e, index)}
+        draggable={!isEditing}
+        onDragStart={(e) => !isEditing && handleDragStart(e, index)}
+        onDragOver={(e) => !isEditing && handleDragOver(e, index)}
+        onDrop={(e) => !isEditing && handleDrop(e, index)}
         onClick={(e) => {
           e.stopPropagation();
-          onSelectElement(element);
+          if (!isEditing) {
+            onSelectElement(element);
+          }
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (element.type === 'text') {
+            handleStartEdit(element);
+          }
         }}
       >
         <Card className="element-card-flow" bodyStyle={{ padding: '12px' }}>
@@ -175,9 +214,36 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
 
   // 渲染元素内容
   const renderElementContent = (element: TemplateElement) => {
+    const isEditing = editingElementId === element.id;
+    
     switch (element.type) {
       case 'text':
-        return <div className="element-preview-text">{(element.config as any).content || '请输入文本'}</div>;
+        if (isEditing) {
+          return (
+            <Input
+              value={editingValue}
+              onChange={setEditingValue}
+              onBlur={handleSaveEdit}
+              onPressEnter={handleSaveEdit}
+              autoFocus
+              style={{ width: '100%' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  handleCancelEdit();
+                }
+              }}
+            />
+          );
+        }
+        return (
+          <div 
+            className="element-preview-text"
+            style={{ cursor: 'text', minHeight: '20px' }}
+            title="双击编辑"
+          >
+            {(element.config as any).content || '请输入文本'}
+          </div>
+        );
       case 'field':
         return <div className="element-preview-field">[{(element.config as any).fieldPath || '选择字段'}]</div>;
       case 'loop':
@@ -277,8 +343,8 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
         </div>
       </div>
       
-      <div
-        ref={canvasRef}
+    <div
+      ref={canvasRef}
         className={`editor-canvas-flow ${pendingElementType ? 'adding-mode' : ''}`}
         onClick={handleCanvasClick}
         style={{
@@ -286,7 +352,7 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = ({
           minHeight: pageHeight,
           cursor: pendingElementType ? 'pointer' : 'default'
         }}
-      >
+    >
         {template.elements.length === 0 ? (
           <div className="canvas-empty">
             <p>{pendingElementType ? '点击画布添加元素到末尾' : '点击上方「添加元素」按钮开始创建模板'}</p>

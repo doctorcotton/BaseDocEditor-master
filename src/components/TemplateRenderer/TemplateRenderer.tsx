@@ -3,13 +3,14 @@
  * 根据模板渲染文档（流式布局）
  */
 
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Toast } from '@douyinfe/semi-ui';
 import { Template, TemplateElement } from '../../types/template';
 import { IRecord, IFieldMeta, FieldType } from '@lark-base-open/js-sdk';
-import { parseFieldPath } from '../../utils/fieldPlaceholder';
 import { LoopAreaRenderer } from './LoopAreaRenderer';
 import { TableRenderer } from './TableRenderer';
-import { formatFieldValue } from '../../utils/fieldFormatter';
+import { formatFieldValue, isFieldEditable } from '../../utils/fieldFormatter';
+import { FieldEditor } from '../FieldEditor';
 import './TemplateRenderer.css';
 
 interface TemplateRendererProps {
@@ -19,6 +20,7 @@ interface TemplateRendererProps {
   table: any; // ITable
   onComment?: (recordId: string, fieldId?: string) => void;
   commentStats?: Map<string, { total: number; unresolved: number }>;
+  onFieldChange?: (fieldId: string, newValue: any, oldValue: any) => void;
 }
 
 export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
@@ -27,8 +29,105 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   fields,
   table,
   onComment,
-  commentStats
+  commentStats,
+  onFieldChange
 }) => {
+  // 异步加载字段值（用于字段元素）
+  const [fieldValues, setFieldValues] = useState<Map<string, any>>(new Map());
+  // 正在编辑的字段ID
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  // 编辑中的值
+  const [editingValue, setEditingValue] = useState<any>(null);
+  // 编辑区域的引用
+  const editingFieldRef = useRef<HTMLDivElement | null>(null);
+
+  // 异步加载字段值
+  useEffect(() => {
+    if (!table || !record) {
+      return;
+    }
+
+    const loadFieldValues = async () => {
+      const valueMap = new Map<string, any>();
+      
+      // 收集所有需要加载的字段ID（从字段元素中）
+      const fieldIdsToLoad = new Set<string>();
+      template.elements.forEach((element: TemplateElement) => {
+        if (element.type === 'field') {
+          const config = element.config as any;
+          if (config.fieldId) {
+            fieldIdsToLoad.add(config.fieldId);
+          }
+        }
+      });
+
+      // 批量加载字段值
+      try {
+        for (const fieldId of fieldIdsToLoad) {
+          try {
+            // 先从 record.fields 读取，如果没有则使用 getCellValue
+            let value = record.fields?.[fieldId];
+            if (value === undefined && table) {
+              value = await table.getCellValue(fieldId, record.recordId);
+            }
+            valueMap.set(fieldId, value);
+          } catch (error) {
+            console.error(`[TemplateRenderer] 加载字段值失败: ${fieldId}`, error);
+            valueMap.set(fieldId, null);
+          }
+        }
+      } catch (error) {
+        console.error('[TemplateRenderer] 批量加载字段值失败:', error);
+      }
+      
+      setFieldValues(valueMap);
+    };
+
+    loadFieldValues();
+  }, [table, record?.recordId, template.elements]);
+
+  // 自动保存并退出编辑
+  const handleSaveAndExit = useCallback(() => {
+    if (editingFieldId && onFieldChange && editingValue !== null) {
+      const field = fields.find(f => f.id === editingFieldId);
+      if (field) {
+        // 获取旧值
+        const oldValue = fieldValues.get(editingFieldId);
+        const finalOldValue = oldValue !== undefined ? oldValue : record.fields[editingFieldId];
+        const newValue = editingValue;
+        
+        // 调用变更回调
+        onFieldChange(editingFieldId, newValue, finalOldValue);
+        
+        // 更新本地值
+        setFieldValues(prev => {
+          const next = new Map(prev);
+          next.set(editingFieldId, newValue);
+          return next;
+        });
+      }
+    }
+    setEditingFieldId(null);
+    setEditingValue(null);
+  }, [editingFieldId, editingValue, onFieldChange, fields, record, fieldValues]);
+
+  // 处理点击外部区域退出编辑
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editingFieldId && editingFieldRef.current && !editingFieldRef.current.contains(event.target as Node)) {
+        // 点击外部区域，自动保存并退出编辑
+        handleSaveAndExit();
+      }
+    };
+
+    if (editingFieldId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [editingFieldId, handleSaveAndExit]);
+
   // 渲染单个元素
   const renderElement = (element: TemplateElement, context: { record: IRecord; fields: IFieldMeta[] }): React.ReactNode => {
     switch (element.type) {
@@ -73,9 +172,10 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   // 渲染字段元素
   const renderFieldElement = (element: TemplateElement, context: { record: IRecord; fields: IFieldMeta[] }): React.ReactNode => {
     const config = element.config as any;
-    const fieldPath = config.fieldPath || '';
+    const fieldId = config.fieldId;
     
-    if (!fieldPath) {
+    // 只使用 fieldId 查找字段
+    if (!fieldId) {
       return (
         <div key={element.id} className="template-element template-field">
           <span className="field-empty">未选择字段</span>
@@ -83,41 +183,144 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
       );
     }
 
-    // 解析字段路径
-    const fieldResult = parseFieldPath(fieldPath, context.fields);
-    if (!fieldResult) {
+    const field = context.fields.find(f => f.id === fieldId);
+    if (!field) {
       return (
         <div key={element.id} className="template-element template-field">
-          <span className="field-error">字段不存在: {fieldPath}</span>
+          <span className="field-empty">字段未找到: {fieldId}</span>
         </div>
       );
     }
+    
+    const fieldResult = {
+      fieldId: field.id,
+      fieldName: field.name,
+      fieldType: field.type,
+      fieldMeta: field,
+      isLinked: false
+    };
 
-    // 获取字段值
-    const value = context.record.fields[fieldResult.fieldId];
+    // 获取字段值：优先使用异步加载的值，如果没有则使用 record.fields
+    let value = fieldValues.get(fieldResult.fieldId);
+    if (value === undefined) {
+      value = context.record.fields[fieldResult.fieldId];
+    }
     const displayValue = formatFieldValue(value, fieldResult.fieldType);
 
     // 获取评论统计
     const stats = commentStats?.get(`${context.record.recordId}:${fieldResult.fieldId}`);
     const hasComments = stats && stats.total > 0;
 
+    // 判断是否可编辑
+    const editable = isFieldEditable(fieldResult.fieldType);
+    const isEditing = editingFieldId === fieldResult.fieldId;
+    const currentEditingValue = isEditing ? editingValue : value;
+
+    // 处理开始编辑（双击）
+    const handleStartEdit = (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      e?.preventDefault();
+      console.log('[TemplateRenderer] 双击编辑触发', { 
+        fieldId: fieldResult.fieldId, 
+        fieldName: fieldResult.fieldName,
+        editable, 
+        hasOnFieldChange: !!onFieldChange,
+        value 
+      });
+      if (editable && onFieldChange) {
+        console.log('[TemplateRenderer] 进入编辑模式', { fieldId: fieldResult.fieldId });
+        setEditingFieldId(fieldResult.fieldId);
+        setEditingValue(value);
+      } else {
+        console.warn('[TemplateRenderer] 无法进入编辑模式', { editable, hasOnFieldChange: !!onFieldChange });
+      }
+    };
+
+    // 处理值变化
+    const handleValueChange = (newValue: any) => {
+      setEditingValue(newValue);
+    };
+
+    // 如果是标题元素（id为'title'），使用特殊样式，拼接"原料品质标准"
+    const isTitle = element.id === 'title';
+    
+    if (isTitle) {
+      const titleText = displayValue ? `${displayValue} 原料品质标准` : '未命名记录 原料品质标准';
+      return (
+        <div
+          key={element.id}
+          className="template-element template-field template-title"
+          style={{
+            fontSize: 24,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            marginBottom: 20
+          }}
+        >
+          {titleText}
+        </div>
+      );
+    }
+
+    // 特殊处理：致敏物质信息字段为空时显示"无"，且不显示字段名称标签
+    const isEmptyValue = !displayValue || displayValue.trim() === '';
+    const emptyDisplayText = fieldResult.fieldId === 'fldNL9B304' ? '无' : '空';
+    const isAllergenField = fieldResult.fieldId === 'fldNL9B304'; // 致敏物质信息字段不显示标签
+
     return (
       <div
         key={element.id}
-        className="template-element template-field"
+        ref={isEditing ? editingFieldRef : null}
+        className={`template-element template-field ${editable ? 'field-editable' : ''} ${isEditing ? 'field-editing' : ''}`}
+        style={{ cursor: editable && !isEditing ? 'pointer' : 'default' }}
+        onDoubleClick={(e) => {
+          console.log('[TemplateRenderer] onDoubleClick 事件', { 
+            fieldId: fieldResult.fieldId, 
+            isEditing, 
+            editable 
+          });
+          // 如果已经在编辑模式，不处理双击
+          if (!isEditing && editable) {
+            e.stopPropagation();
+            handleStartEdit(e);
+          } else if (!isEditing && !editable) {
+            // 双击不可编辑字段时显示提示
+            e.stopPropagation();
+            Toast.warning('系统关联字段，不可编辑，或联系管理员');
+          }
+        }}
       >
-        <div className="field-content">
-          <span className="field-label">{fieldResult.fieldName}:</span>
-          <span className="field-value">{displayValue || <span className="field-empty">空</span>}</span>
-        </div>
-        {hasComments && onComment && (
-          <div
-            className="field-comment-badge"
-            onClick={() => onComment(context.record.recordId, fieldResult.fieldId)}
-            title={`${stats.total} 条评论，${stats.unresolved} 条未解决`}
-          >
-            💬 {stats.total}
+        {isEditing ? (
+          <div className="field-editor-wrapper">
+            {!isAllergenField && <span className="field-label">{fieldResult.fieldName}:</span>}
+            <FieldEditor
+              type={fieldResult.fieldType}
+              value={currentEditingValue}
+              onChange={handleValueChange}
+              onBlur={handleSaveAndExit}
+              fieldMeta={fieldResult.fieldMeta}
+            />
           </div>
+        ) : (
+          <>
+            <div 
+              className="field-content"
+              title={editable ? '双击编辑' : ''}
+              style={{ userSelect: 'none' }}
+            >
+              {!isAllergenField && <span className="field-label">{fieldResult.fieldName}:</span>}
+              <span className="field-value">{isEmptyValue ? <span className="field-empty">{emptyDisplayText}</span> : displayValue}</span>
+            </div>
+            {hasComments && onComment && (
+              <div
+                className="field-comment-badge"
+                onClick={() => onComment(context.record.recordId, fieldResult.fieldId)}
+                title={`${stats.total} 条评论，${stats.unresolved} 条未解决`}
+              >
+                💬 {stats.total}
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -127,10 +330,35 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   const renderLoopElement = (element: TemplateElement, context: { record: IRecord; fields: IFieldMeta[] }): React.ReactNode => {
     const config = element.config as any;
     
-    if (!config.fieldId) {
+    // 如果 fieldId 为空，尝试自动查找关联字段
+    let fieldId = config.fieldId;
+    if (!fieldId) {
+      // 尝试通过字段名称查找关联字段（关联到原料标准明细表）
+      const linkField = context.fields.find(f => {
+        // 查找关联字段类型（18=单项关联，21=双向关联）
+        if (f.type === 18 || f.type === 21) {
+          // 如果字段名称包含"标准明细"或"明细"，或者 fieldName 配置了名称
+          const fieldName = config.fieldName || '';
+          if (fieldName) {
+            return f.name === fieldName;
+          }
+          // 默认查找包含"标准明细"的字段
+          return f.name.includes('标准明细') || f.name.includes('明细');
+        }
+        return false;
+      });
+      
+      if (linkField) {
+        fieldId = linkField.id;
+        // 更新配置（但不保存，只是临时使用）
+        config.fieldId = fieldId;
+      }
+    }
+    
+    if (!fieldId) {
       return (
         <div key={element.id} className="template-element template-loop">
-          <div className="loop-empty">未配置关联字段</div>
+          <div className="loop-empty">未配置关联字段（请选择关联到"原料标准明细"表的字段）</div>
         </div>
       );
     }
@@ -144,6 +372,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         table={table}
         onComment={onComment}
         commentStats={commentStats}
+        onFieldChange={onFieldChange}
       />
     );
   };
@@ -159,7 +388,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         </div>
       );
     }
-
+    
     return (
       <TableRenderer
         key={element.id}
@@ -169,6 +398,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         table={table}
         onComment={onComment}
         commentStats={commentStats}
+        onFieldChange={onFieldChange}
       />
     );
   };
@@ -280,7 +510,7 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
             </div>
           ) : (
             template.elements.map(element => {
-              return renderElement(element, { record, fields });
+          return renderElement(element, { record, fields });
             })
           )}
         </div>

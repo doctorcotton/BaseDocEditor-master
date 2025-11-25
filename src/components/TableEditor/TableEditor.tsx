@@ -96,11 +96,6 @@ export const TableEditor: React.FC<TableEditorProps> = ({
     setEditingColumnId(null);
   };
 
-  // 确认
-  const handleConfirm = () => {
-    onConfirm(columns, canWriteback);
-  };
-
   // 表格列定义
   const tableColumns = [
     {
@@ -213,11 +208,11 @@ export const TableEditor: React.FC<TableEditorProps> = ({
             onClick={() => handleMoveDown(index)}
             disabled={index === columns.length - 1}
           />
-          <Button
-            icon={<IconDelete />}
-            type="danger"
-            size="small"
-            onClick={() => handleDeleteColumn(record.id)}
+        <Button
+          icon={<IconDelete />}
+          type="danger"
+          size="small"
+          onClick={() => handleDeleteColumn(record.id)}
           />
         </div>
       )
@@ -240,45 +235,45 @@ export const TableEditor: React.FC<TableEditorProps> = ({
     >
       <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as 'columns' | 'rows')}>
         <TabPane tab="列配置" itemKey="columns">
-          <div className="table-editor">
-            <div className="table-editor-header">
-              <Button
-                icon={<IconPlus />}
-                onClick={handleAddColumn}
-                type="primary"
-              >
-                添加列
-              </Button>
-              <div className="table-editor-options">
-                <Switch
-                  checked={canWriteback}
-                  onChange={setCanWriteback}
-                >
-                  支持反写
-                </Switch>
-              </div>
-            </div>
+      <div className="table-editor">
+        <div className="table-editor-header">
+          <Button
+            icon={<IconPlus />}
+            onClick={handleAddColumn}
+            type="primary"
+          >
+            添加列
+          </Button>
+          <div className="table-editor-options">
+            <Switch
+              checked={canWriteback}
+              onChange={setCanWriteback}
+            >
+              支持反写
+            </Switch>
+          </div>
+        </div>
 
-            <Table
-              columns={tableColumns}
-              dataSource={columns}
-              pagination={false}
-              size="small"
+        <Table
+          columns={tableColumns}
+          dataSource={columns}
+          pagination={false}
+          size="small"
               rowKey="id"
-            />
+        />
 
-            {columns.length === 0 && (
-              <div className="table-editor-empty">
-                <p>暂无列，请点击"添加列"按钮添加</p>
-              </div>
-            )}
+        {columns.length === 0 && (
+          <div className="table-editor-empty">
+            <p>暂无列，请点击"添加列"按钮添加</p>
+          </div>
+        )}
 
             <div className="table-editor-footer">
               <span className="footer-text">
                 共 {columns.length} 列
               </span>
             </div>
-          </div>
+      </div>
         </TabPane>
 
         <TabPane tab="行配置" itemKey="rows">
