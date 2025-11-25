@@ -196,33 +196,47 @@ export const TableRenderer: React.FC<TableRendererProps> = ({
   const handleSaveAndExit = useCallback(() => {
     if (editingCell && onFieldChange && editingValue !== null) {
       const oldValue = rawValues.get(editingCell.fieldId) ?? record.fields?.[editingCell.fieldId];
-      console.log('[TableRenderer] 保存字段值', { 
-        fieldId: editingCell.fieldId, 
-        oldValue, 
-        newValue: editingValue 
-      });
+      // 获取初始显示文本（编辑开始时的值）
+      const oldDisplayText = displayValues.get(editingCell.fieldId) || '';
       
-      // 调用变更回调
-      onFieldChange(editingCell.fieldId, editingValue, oldValue);
+      // 比较显示文本，只有真正改变时才调用变更回调
+      // 注意：editingValue 是字符串，oldDisplayText 也是字符串，直接比较
+      const hasChanged = String(editingValue || '').trim() !== String(oldDisplayText || '').trim();
       
-      // 更新本地显示值
-      setDisplayValues(prev => {
-        const next = new Map(prev);
-        // 编辑后的值就是字符串，直接使用
-        next.set(editingCell.fieldId, String(editingValue || ''));
-        return next;
-      });
-      
-      // 更新原始值（用于下次编辑）
-      setRawValues(prev => {
-        const next = new Map(prev);
-        next.set(editingCell.fieldId, editingValue);
-        return next;
-      });
+      if (hasChanged) {
+        console.log('[TableRenderer] 字段值已改变，触发更新', { 
+          fieldId: editingCell.fieldId, 
+          oldDisplayText,
+          newValue: editingValue 
+        });
+        
+        // 调用变更回调
+        onFieldChange(editingCell.fieldId, editingValue, oldValue);
+        
+        // 更新本地显示值
+        setDisplayValues(prev => {
+          const next = new Map(prev);
+          // 编辑后的值就是字符串，直接使用
+          next.set(editingCell.fieldId, String(editingValue || ''));
+          return next;
+        });
+        
+        // 更新原始值（用于下次编辑）
+        setRawValues(prev => {
+          const next = new Map(prev);
+          next.set(editingCell.fieldId, editingValue);
+          return next;
+        });
+      } else {
+        console.log('[TableRenderer] 字段值未改变，跳过更新', { 
+          fieldId: editingCell.fieldId, 
+          value: editingValue 
+        });
+      }
     }
     setEditingCell(null);
     setEditingValue(null);
-  }, [editingCell, editingValue, onFieldChange, rawValues, record]);
+  }, [editingCell, editingValue, onFieldChange, rawValues, record, displayValues]);
 
   // 注意：不再使用点击外部检测，改用 onBlur 事件
   // 这样可以避免与飞书 SDK 的事件处理冲突

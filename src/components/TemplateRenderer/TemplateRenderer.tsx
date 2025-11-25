@@ -38,6 +38,8 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   // 编辑中的值
   const [editingValue, setEditingValue] = useState<any>(null);
+  // 编辑开始时的初始显示文本（用于比较是否有变化）
+  const [initialEditingText, setInitialEditingText] = useState<string>('');
   // 编辑区域的引用
   const editingFieldRef = useRef<HTMLDivElement | null>(null);
 
@@ -91,25 +93,42 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     if (editingFieldId && onFieldChange && editingValue !== null) {
       const field = fields.find(f => f.id === editingFieldId);
       if (field) {
-        // 获取旧值
+        // 获取旧值（用于回调）
         const oldValue = fieldValues.get(editingFieldId);
         const finalOldValue = oldValue !== undefined ? oldValue : record.fields[editingFieldId];
         const newValue = editingValue;
         
-        // 调用变更回调
-        onFieldChange(editingFieldId, newValue, finalOldValue);
+        // 比较显示文本，只有真正改变时才调用变更回调
+        // 注意：editingValue 是字符串，initialEditingText 也是字符串，直接比较
+        const hasChanged = String(newValue || '').trim() !== String(initialEditingText || '').trim();
         
-        // 更新本地值
-        setFieldValues(prev => {
-          const next = new Map(prev);
-          next.set(editingFieldId, newValue);
-          return next;
-        });
+        if (hasChanged) {
+          console.log('[TemplateRenderer] 字段值已改变，触发更新', { 
+            fieldId: editingFieldId, 
+            initialText: initialEditingText,
+            newValue 
+          });
+          // 调用变更回调
+          onFieldChange(editingFieldId, newValue, finalOldValue);
+          
+          // 更新本地值
+          setFieldValues(prev => {
+            const next = new Map(prev);
+            next.set(editingFieldId, newValue);
+            return next;
+          });
+        } else {
+          console.log('[TemplateRenderer] 字段值未改变，跳过更新', { 
+            fieldId: editingFieldId, 
+            value: newValue 
+          });
+        }
       }
     }
     setEditingFieldId(null);
     setEditingValue(null);
-  }, [editingFieldId, editingValue, onFieldChange, fields, record, fieldValues]);
+    setInitialEditingText('');
+  }, [editingFieldId, editingValue, initialEditingText, onFieldChange, fields, record, fieldValues]);
 
   // 处理点击外部区域退出编辑
   useEffect(() => {
@@ -225,12 +244,14 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
         fieldName: fieldResult.fieldName,
         editable, 
         hasOnFieldChange: !!onFieldChange,
-        value 
+        value,
+        displayValue
       });
       if (editable && onFieldChange) {
-        console.log('[TemplateRenderer] 进入编辑模式', { fieldId: fieldResult.fieldId });
+        console.log('[TemplateRenderer] 进入编辑模式', { fieldId: fieldResult.fieldId, displayValue });
         setEditingFieldId(fieldResult.fieldId);
-        setEditingValue(value);
+        setEditingValue(displayValue); // 使用格式化后的显示值作为编辑初始值
+        setInitialEditingText(displayValue || ''); // 保存初始显示文本用于比较
       } else {
         console.warn('[TemplateRenderer] 无法进入编辑模式', { editable, hasOnFieldChange: !!onFieldChange });
       }
