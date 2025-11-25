@@ -98,6 +98,18 @@ export function formatFieldValue(value: any, fieldType: FieldType): string {
         return value;
       }
       return '';
+    
+    // 日期类型（只显示日期，不显示时间）
+    case 5: // FieldType 5 是日期类型
+      if (typeof value === 'number') {
+        return dayjs(value).format('YYYY-MM-DD');
+      }
+      if (typeof value === 'string') {
+        // 如果是日期时间字符串，只取日期部分
+        const dateMatch = value.match(/^\d{4}-\d{2}-\d{2}/);
+        return dateMatch ? dateMatch[0] : value;
+      }
+      return '';
 
     case FieldType.SingleSelect:
       if (typeof value === 'string') return value;

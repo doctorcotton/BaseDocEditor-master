@@ -104,6 +104,7 @@ export interface TableColumn {
   label: string; // 列标题
   width?: number; // 列宽
   align?: 'left' | 'center' | 'right';
+  format?: 'date' | 'datetime' | 'number' | 'currency'; // 格式化选项
 }
 
 /**

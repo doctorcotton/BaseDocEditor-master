@@ -561,15 +561,34 @@ export const DEFAULT_TEMPLATE: Template = {
     },
 
     {
-      id: 'change_record_table',
-      type: 'table',
+      id: 'change_record_loop',
+      type: 'loop',
       position: { x: 40, y: 2140 },
       config: {
-        columns: [
-        ],
-        showHeader: true,
-        bordered: true,
-        canWriteback: true
+        fieldId: 'fldRs7xX9U', // 主表中关联到"标准变更记录"表的字段
+        fieldName: '标准变更记录',
+        template: [
+          {
+            id: 'change_record_table_inner',
+            type: 'table',
+            position: { x: 0, y: 0 },
+            config: {
+              columns: [
+                { id: 'col1', label: '序号', width: 60, fieldId: 'fldpBu4ESO' },
+                { id: 'col2', label: '替代版本号', width: 110, fieldId: 'fldNmCZ5RT' },
+                { id: 'col3', label: '变更日期', width: 120, fieldId: 'fld2Rz5f7b', format: 'date' },
+                { id: 'col4', label: '变更内容', width: 200, fieldId: 'fldTvZwqB2' },
+                { id: 'col5', label: '变更原因', width: 150, fieldId: 'fldeDy48rL' },
+                { id: 'col6', label: '修订人', width: 80, fieldId: 'fldTtVRn5i' }
+              ],
+              rows: [],
+              dataSource: 'loop',
+              showHeader: true,
+              bordered: true,
+              canWriteback: true
+            }
+          }
+        ]
       }
     },
 
@@ -587,10 +606,11 @@ export const DEFAULT_TEMPLATE: Template = {
 
     {
       id: 'test_method_field',
-      type: 'field',
+      type: 'link',
       position: { x: 40, y: 2390 },
       config: {
-        fieldPath: '检测方法详情'
+        fieldId: 'fldqSJFqY9', // 方法中的附件（引用字段，超链接）
+        fieldPath: '方法中的附件'
       }
     }
   ],

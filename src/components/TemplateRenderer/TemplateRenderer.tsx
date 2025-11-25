@@ -54,14 +54,21 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     const loadFieldValues = async () => {
       const valueMap = new Map<string, any>();
       
-      // 收集所有需要加载的字段ID（从字段元素中）
+      // 收集所有需要加载的字段ID（从字段元素和链接元素中）
       const fieldIdsToLoad = new Set<string>();
       template.elements.forEach((element: TemplateElement) => {
-        if (element.type === 'field') {
-          const config = element.config as any;
-          if (config.fieldId) {
-            fieldIdsToLoad.add(config.fieldId);
-          }
+        const config = element.config as any;
+        // 处理字段元素
+        if (element.type === 'field' && config.fieldId) {
+          fieldIdsToLoad.add(config.fieldId);
+        }
+        // 处理链接元素
+        if (element.type === 'link' && config.fieldId) {
+          fieldIdsToLoad.add(config.fieldId);
+        }
+        // 处理图片元素
+        if (element.type === 'image' && config.fieldId) {
+          fieldIdsToLoad.add(config.fieldId);
         }
       });
 
@@ -666,41 +673,53 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
     if (value === undefined) {
       value = context.record.fields[fieldId];
     }
+    
+    console.log('[renderLinkElement] 字段值:', { fieldId, value });
 
-    // 解析 URL 字段值
-    // 飞书的 URL 字段可能返回:
+    // 解析链接列表
+    // 飞书的字段可能返回多种格式:
     // 1. 字符串: "https://xxx"
     // 2. 对象: { link: "https://xxx", text: "文档名称" }
     // 3. 数组: [{ link: "https://xxx", text: "文档名称" }]
-    let url = '';
-    let linkText = '';
+    // 4. mention 数组: [{ type: "mention", text: "文档名称", link: "https://xxx" }]
+    
+    interface LinkItem {
+      url: string;
+      text: string;
+    }
+    
+    const links: LinkItem[] = [];
 
     if (Array.isArray(value)) {
-      // 数组格式，取第一个
-      const firstItem = value[0];
-      if (typeof firstItem === 'string') {
-        url = firstItem;
-        linkText = firstItem;
-      } else if (firstItem && typeof firstItem === 'object') {
-        url = firstItem.link || firstItem.url || '';
-        // 优先使用 text（飞书文档名称）
-        linkText = firstItem.text || firstItem.name || url;
-      }
+      // 数组格式，处理所有链接
+      value.forEach((item: any) => {
+        if (typeof item === 'string') {
+          if (item.startsWith('http')) {
+            links.push({ url: item, text: item });
+          }
+        } else if (item && typeof item === 'object') {
+          const url = item.link || item.url || '';
+          const text = item.text || item.name || url;
+          if (url) {
+            links.push({ url, text });
+          }
+        }
+      });
     } else if (typeof value === 'string') {
-      url = value;
-      linkText = value;
+      if (value.startsWith('http')) {
+        links.push({ url: value, text: value });
+      }
     } else if (value && typeof value === 'object') {
-      url = value.link || value.url || '';
-      // 优先使用 text（飞书文档名称）
-      linkText = value.text || value.name || url;
+      const url = value.link || value.url || '';
+      const text = value.text || value.name || url;
+      if (url) {
+        links.push({ url, text });
+      }
     }
 
-    // 如果配置了自定义文本，使用配置的文本
-    if (config.text) {
-      linkText = config.text;
-    }
+    console.log('[renderLinkElement] 解析到的链接:', links);
 
-    if (!url) {
+    if (links.length === 0) {
       return (
         <div key={element.id} className="template-element template-link">
           <span className="link-empty">无链接</span>
@@ -708,14 +727,35 @@ export const TemplateRenderer: React.FC<TemplateRendererProps> = ({
       );
     }
 
+    // 如果只有一个链接
+    if (links.length === 1) {
+      const link = links[0];
+      const displayText = config.text || link.text || '链接';
+      return (
+        <div
+          key={element.id}
+          className="template-element template-link"
+        >
+          <a href={link.url} target="_blank" rel="noopener noreferrer" title={link.url}>
+            {displayText}
+          </a>
+        </div>
+      );
+    }
+
+    // 多个链接，显示为列表
     return (
       <div
         key={element.id}
-        className="template-element template-link"
+        className="template-element template-link template-link-list"
       >
-        <a href={url} target="_blank" rel="noopener noreferrer" title={url}>
-          {linkText || '链接'}
-        </a>
+        {links.map((link, index) => (
+          <div key={index} className="link-item">
+            <a href={link.url} target="_blank" rel="noopener noreferrer" title={link.url}>
+              {link.text || '链接'}
+            </a>
+          </div>
+        ))}
       </div>
     );
   };

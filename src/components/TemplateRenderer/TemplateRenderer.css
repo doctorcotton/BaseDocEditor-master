@@ -303,3 +303,21 @@
   color: var(--semi-color-text-2);
   font-style: italic;
 }
+
+/* 多链接列表 */
+.template-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.template-link-list .link-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.template-link-list .link-item::before {
+  content: '•';
+  color: var(--semi-color-text-2);
+}

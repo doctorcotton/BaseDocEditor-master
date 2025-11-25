@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table } from '@douyinfe/semi-ui';
 import { IRecord, IFieldMeta } from '@lark-base-open/js-sdk';
+import dayjs from 'dayjs';
 import { TemplateElement } from '../../types/template';
 import { formatFieldValue } from '../../utils/fieldFormatter';
 import './TemplateRenderer.css';
@@ -139,7 +140,22 @@ export const LoopTableRenderer: React.FC<LoopTableRendererProps> = ({
         }
         const field = fields.find(f => f.id === col.fieldId);
         if (field) {
-          rowData[col.id] = formatFieldValue(value, field.type);
+          let formattedValue = formatFieldValue(value, field.type);
+          
+          // 如果列配置了 format: 'date'，只显示日期部分
+          if (col.format === 'date' && value) {
+            if (typeof value === 'number') {
+              formattedValue = dayjs(value).format('YYYY-MM-DD');
+            } else if (typeof value === 'string') {
+              // 如果是日期时间字符串，只取日期部分
+              const dateMatch = formattedValue.match(/^\d{4}-\d{2}-\d{2}/);
+              if (dateMatch) {
+                formattedValue = dateMatch[0];
+              }
+            }
+          }
+          
+          rowData[col.id] = formattedValue;
         } else {
           rowData[col.id] = '';
         }
