@@ -197,6 +197,9 @@
 .table-cell-field {
   min-height: 24px;
   padding: 4px 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
 }
 
 .table-cell-editable {
@@ -211,6 +214,11 @@
 
 .table-cell-editing {
   min-width: 150px;
+  width: 100%;
+}
+
+.table-cell-editing textarea {
+  min-height: 80px;
 }
 
 .table-cell-empty {

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Input, InputNumber, DatePicker, Select, Checkbox, Button } from '@douyinfe/semi-ui';
+import { Input, InputNumber, DatePicker, Select, Checkbox, Button, TextArea } from '@douyinfe/semi-ui';
 import { FieldType } from '@lark-base-open/js-sdk';
 import { FieldEditorProps } from '../types';
 import dayjs from 'dayjs';
@@ -15,9 +15,18 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   onBlur,
   fieldMeta
 }) => {
+  // 判断文本是否为长文本（包含换行符或长度超过50个字符）
+  const isLongText = (text: string | null | undefined): boolean => {
+    if (!text) return false;
+    const str = String(text);
+    return str.includes('\n') || str.length > 50;
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && type === FieldType.Text) {
-      // 文本类型按 Enter 键时触发 onBlur（自动保存）
+    // 对于 TextArea，Shift+Enter 换行，Enter 不做处理
+    // 对于 Input，Enter 保存，Escape 退出
+    if (e.key === 'Enter' && !e.shiftKey && type === FieldType.Text && !isLongText(value)) {
+      // 短文本按 Enter 键时触发 onBlur（自动保存）
       e.preventDefault();
       onBlur?.();
     } else if (e.key === 'Escape') {
@@ -31,16 +40,34 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   const renderEditor = () => {
     switch (type) {
       case FieldType.Text:
-        return (
-          <Input
-            value={value || ''}
-            onChange={(val) => onChange(val)}
-            onKeyDown={handleKeyDown}
-            onBlur={onBlur}
-            autoFocus
-            placeholder="输入文本..."
-          />
-        );
+        // 根据内容长度和是否包含换行符决定使用 TextArea 还是 Input
+        const shouldUseTextArea = isLongText(value);
+        
+        if (shouldUseTextArea) {
+          return (
+            <TextArea
+              value={value || ''}
+              onChange={(val) => onChange(val)}
+              onKeyDown={handleKeyDown}
+              onBlur={onBlur}
+              autoFocus
+              placeholder="输入文本..."
+              autosize={{ minRows: 3, maxRows: 10 }}
+              style={{ width: '100%' }}
+            />
+          );
+        } else {
+          return (
+            <Input
+              value={value || ''}
+              onChange={(val) => onChange(val)}
+              onKeyDown={handleKeyDown}
+              onBlur={onBlur}
+              autoFocus
+              placeholder="输入文本..."
+            />
+          );
+        }
 
       case FieldType.Number:
       case FieldType.Currency:
@@ -129,16 +156,34 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
         );
 
       default:
-        return (
-          <Input
-            value={String(value || '')}
-            onChange={(val) => onChange(val)}
-            onKeyDown={handleKeyDown}
-            onBlur={onBlur}
-            autoFocus
-            placeholder="输入内容..."
-          />
-        );
+        // 默认情况也检查是否为长文本
+        const defaultShouldUseTextArea = isLongText(value);
+        
+        if (defaultShouldUseTextArea) {
+          return (
+            <TextArea
+              value={String(value || '')}
+              onChange={(val) => onChange(val)}
+              onKeyDown={handleKeyDown}
+              onBlur={onBlur}
+              autoFocus
+              placeholder="输入内容..."
+              autosize={{ minRows: 3, maxRows: 10 }}
+              style={{ width: '100%' }}
+            />
+          );
+        } else {
+          return (
+            <Input
+              value={String(value || '')}
+              onChange={(val) => onChange(val)}
+              onKeyDown={handleKeyDown}
+              onBlur={onBlur}
+              autoFocus
+              placeholder="输入内容..."
+            />
+          );
+        }
     }
   };
 

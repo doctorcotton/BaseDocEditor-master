@@ -51,8 +51,9 @@
   padding: 6px 8px;
   border-radius: 4px;
   min-height: 32px;
-  display: flex;
-  align-items: center;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
 }
 
 .field-editable {

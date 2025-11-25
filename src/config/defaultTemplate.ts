@@ -25,7 +25,7 @@ export const DEFAULT_TEMPLATE: Template = {
       }
     },
 
-    // 表头信息表格
+    // 表头信息表格（合并为2行3列格式）
     {
       id: 'header_table',
       type: 'table',
@@ -44,29 +44,9 @@ export const DEFAULT_TEMPLATE: Template = {
               { columnId: 'col2', type: 'field', fieldId: 'fldL7m1ZTN', fieldPath: '版本号' },
               { columnId: 'col3', type: 'field', fieldId: 'fldvHOFabo', fieldPath: '生效日期' }
             ]
-          }
-        ],
-        dataSource: 'static',
-        showHeader: true,
-        bordered: true,
-        canWriteback: false
-      }
-    },
-
-    // 第二行：编制人、审核人、批准人
-    {
-      id: 'header_table_2',
-      type: 'table',
-      position: { x: 40, y: 180 },
-      config: {
-        columns: [
-          { id: 'col1', label: '编制人', width: 200 },
-          { id: 'col2', label: '审核人', width: 200 },
-          { id: 'col3', label: '批准人', width: 200 }
-        ],
-        rows: [
+          },
           {
-            id: 'row1',
+            id: 'row2',
             cells: [
               { columnId: 'col1', type: 'field', fieldId: 'fldLwa5wPM', fieldPath: '编制人' },
               { columnId: 'col2', type: 'field', fieldPath: '审核人' },
