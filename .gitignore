@@ -4,7 +4,7 @@ package-lock.json
 yarn.lock
 
 # Build output
-dist/
+# dist/  # 已移除，需要提交 dist 目录到仓库用于静态部署
 dist-ssr/
 *.local
 
